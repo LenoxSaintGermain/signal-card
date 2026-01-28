@@ -2,10 +2,10 @@ import { Atlas } from "@/components/Atlas";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { generateScenario } from "@/lib/scenario-generator";
 import { INDUSTRIES, ROLES, SIGNALS, Signal } from "@/lib/signals";
+import { trpc } from "@/lib/trpc";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowRight, CheckCircle2, ChevronRight, Terminal } from "lucide-react";
+import { ArrowRight, ChevronRight, Terminal } from "lucide-react";
 import { useState } from "react";
 
 // Typing Effect Component
@@ -35,14 +35,33 @@ export default function Home() {
   const [selectedSignal, setSelectedSignal] = useState<Signal | null>(null);
   const [scenario, setScenario] = useState<any>(null);
 
+  // Use tRPC mutation for real-time Gemini insights
+  const generateInsight = trpc.insights.generate.useMutation({
+    onSuccess: (data) => {
+      setScenario(data);
+      setState("insight");
+    },
+    onError: (error) => {
+      console.error("Failed to generate insight:", error);
+      // Optionally show an error state to the user
+      setState("calibration");
+    },
+  });
+
   const handleStart = () => setState("calibration");
 
   const handleCalibrate = async () => {
     if (!selectedRole || !selectedIndustry || !selectedSignal) return;
     setState("processing");
-    const result = await generateScenario(selectedSignal, selectedRole, selectedIndustry);
-    setScenario(result);
-    setState("insight");
+    
+    // Call the backend API with Gemini integration
+    generateInsight.mutate({
+      signalId: selectedSignal.id,
+      signalTitle: selectedSignal.title,
+      signalTruth: selectedSignal.truth,
+      role: selectedRole,
+      industry: selectedIndustry,
+    });
   };
 
   return (

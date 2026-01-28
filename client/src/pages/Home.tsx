@@ -234,7 +234,7 @@ export default function Home() {
                 <Button 
                   size="lg" 
                   className="h-16 text-lg gap-3 bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_0_30px_rgba(212,175,55,0.2)]"
-                  onClick={() => window.location.href = "mailto:hello@thirdsignal.ai?subject=Deploy Intelligence"}
+                  onClick={() => window.open("https://cal.com/thirdsignal/strategy-session", "_blank")}
                 >
                   Deploy This Intelligence <ChevronRight />
                 </Button>

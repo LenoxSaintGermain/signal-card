@@ -6,13 +6,21 @@ interface InsightInput {
   signalTruth: string;
   role: string;
   industry: string;
+  rawInput?: string; // New: Confessional input
 }
 
-interface InsightOutput {
+export interface StoryboardScene {
+  id: number;
+  visual_prompt: string; // Description for background video generation
+  text_overlay: string; // The "Script" text shown to user
+  video_style: 'cinematic' | 'glitch' | 'data-flow' | 'abstract-tech';
+  mood: 'dark' | 'bright' | 'urgent' | 'calm';
+}
+
+export interface InsightOutput {
   title: string;
-  body: string;
-  implication: string;
-  metrics: string[];
+  storyboard: StoryboardScene[];
+  final_cta: string;
 }
 
 /**
@@ -20,46 +28,44 @@ interface InsightOutput {
  * This replaces the simulated scenario generator with real AI-powered analysis
  */
 export async function generateInsight(input: InsightInput): Promise<InsightOutput> {
-  const { signalId, signalTitle, signalTruth, role, industry } = input;
+  const { signalId, signalTitle, signalTruth, role, industry, rawInput } = input;
 
-  const prompt = `You are a strategic AI consultant for Third Signal Labs. Generate a bespoke, executive-level strategic insight based on the following context:
+  const prompt = `You are a strategic AI consultant for Third Signal Labs. Generate a 5-scene "scrollytelling" storyboard script for a mobile experience based on the following context:
 
 **Signal ID**: ${signalId}
 **Signal**: ${signalTitle}
 **Core Truth**: ${signalTruth}
 **Client Role**: ${role}
 **Industry**: ${industry}
+**User Confession**: "${rawInput || 'No specific confession provided.'}"
 
-Your task is to create a compelling, personalized strategic vignette that demonstrates deep understanding of their specific context. The output must be:
+Your task is to create a cinematic narrative journey. The output must be a JSON object containing a title, a final CTA, and a storyboard array of 5 scenes.
 
-1. **Title**: A punchy, paradox-style title (e.g., "The ${industry.split('/')[0].trim()} ${signalTitle} Paradox")
-
-2. **Body** (150-200 words): A narrative that:
-   - Opens with industry-specific context
-   - Connects the signal truth to their role's perspective
-   - Reveals the hidden system dynamics at play
-   - Uses concrete, vivid language (avoid buzzwords)
-   - Speaks directly to their pain points
-
-3. **Implication** (50-75 words): A strategic recommendation that:
-   - Reframes the problem as an opportunity
-   - Suggests a counterintuitive approach
-   - Positions AI/automation as the leverage point
-   - Uses active, confident language
-
-4. **Metrics** (exactly 3): Projected outcomes in format "Metric +/-XX%"
-   - Must be specific, ambitious but credible
-   - Examples: "Velocity +40%", "Overhead -60%", "Signal Fidelity 99%"
+Each scene must have:
+1. **visual_prompt**: A concise, vivid description for a background video loop (e.g., "Abstract data stream turning gold," "Cinematic drone shot of a futuristic city at night").
+2. **text_overlay**: The script text displayed to the user. Keep it punchy, big typography style (max 10-15 words).
+   - Scene 1: The Hook (Acknowledge the pain/context).
+   - Scene 2: The Problem (Deepen the conflict).
+   - Scene 3: The Shift (The "Aha" moment / Reframe).
+   - Scene 4: The Future (The result/metric).
+   - Scene 5: The Closing (Empowerment).
+3. **video_style**: Choose from 'cinematic', 'glitch', 'data-flow', 'abstract-tech'.
+4. **mood**: Choose from 'dark', 'bright', 'urgent', 'calm'.
 
 Return ONLY valid JSON in this exact structure:
 {
   "title": "string",
-  "body": "string",
-  "implication": "string",
-  "metrics": ["string", "string", "string"]
+  "final_cta": "string",
+  "storyboard": [
+    { "id": 1, "visual_prompt": "...", "text_overlay": "...", "video_style": "...", "mood": "..." },
+    { "id": 2, "visual_prompt": "...", "text_overlay": "...", "video_style": "...", "mood": "..." },
+    { "id": 3, "visual_prompt": "...", "text_overlay": "...", "video_style": "...", "mood": "..." },
+    { "id": 4, "visual_prompt": "...", "text_overlay": "...", "video_style": "...", "mood": "..." },
+    { "id": 5, "visual_prompt": "...", "text_overlay": "...", "video_style": "...", "mood": "..." }
+  ]
 }
 
-Make it feel like a $50k consulting deliverable distilled into 3 minutes of reading. Be specific, be bold, be memorable.`;
+Make it feel like a high-end cinematic trailer for their future business success. Be bold.`;
 
   try {
     const apiUrl = ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
@@ -83,32 +89,30 @@ Make it feel like a $50k consulting deliverable distilled into 3 minutes of read
         response_format: {
           type: "json_schema",
           json_schema: {
-            name: "strategic_insight",
+            name: "strategic_storyboard",
             strict: true,
             schema: {
               type: "object",
               properties: {
-                title: {
-                  type: "string",
-                  description: "A punchy, paradox-style title for the insight",
-                },
-                body: {
-                  type: "string",
-                  description: "The main narrative body of the insight (150-200 words)",
-                },
-                implication: {
-                  type: "string",
-                  description: "The strategic recommendation (50-75 words)",
-                },
-                metrics: {
+                title: { type: "string" },
+                final_cta: { type: "string" },
+                storyboard: {
                   type: "array",
                   items: {
-                    type: "string",
-                  },
-                  description: "Exactly 3 projected outcome metrics",
-                },
+                    type: "object",
+                    properties: {
+                      id: { type: "number" },
+                      visual_prompt: { type: "string" },
+                      text_overlay: { type: "string" },
+                      video_style: { type: "string", enum: ["cinematic", "glitch", "data-flow", "abstract-tech"] },
+                      mood: { type: "string", enum: ["dark", "bright", "urgent", "calm"] }
+                    },
+                    required: ["id", "visual_prompt", "text_overlay", "video_style", "mood"],
+                    additionalProperties: false
+                  }
+                }
               },
-              required: ["title", "body", "implication", "metrics"],
+              required: ["title", "storyboard", "final_cta"],
               additionalProperties: false,
             },
           },
@@ -121,32 +125,59 @@ Make it feel like a $50k consulting deliverable distilled into 3 minutes of read
     }
 
     const data = await response.json();
-    
-    // Log the response for debugging
-    console.log("[Insight Generator] API Response:", JSON.stringify(data, null, 2));
-    
-    if (!data.choices || data.choices.length === 0) {
-      throw new Error(`No choices in API response. Full response: ${JSON.stringify(data)}`);
-    }
-    
-    const content = data.choices[0]?.message?.content;
+    const content = data.choices?.[0]?.message?.content;
 
     if (!content) {
       throw new Error("No content returned from Gemini API");
     }
 
     const insight: InsightOutput = JSON.parse(content);
-
     return insight;
+
   } catch (error) {
     console.error("[Insight Generator] Error:", error);
 
-    // Fallback to a high-quality simulated response if API fails
+    // Fallback Storyboard
     return {
-      title: `The ${industry.split('/')[0].trim()} ${signalTitle} Paradox`,
-      body: `In ${industry}, ${signalTruth} As a ${role}, you are uniquely positioned to see the system failures that others ignore. The current architecture is optimized to preserve the problem, not solve it. Every layer of complexity you've inherited is a tax on velocity, and the cost compounds daily.`,
-      implication: `The strategic move is to invert the model. By deploying autonomous agents to address ${signalTitle.toLowerCase()}, we don't just patch the leak—we redesign the plumbing. This shifts your team from 'keeping the lights on' to 'lighting the fire'.`,
-      metrics: ["Velocity +40%", "Overhead -60%", "Signal Fidelity 99%"],
+      title: `The ${industry} Paradox`,
+      final_cta: "Deploy Intelligence",
+      storyboard: [
+        {
+          id: 1,
+          visual_prompt: "Dark, moody server room with flickering lights.",
+          text_overlay: `In ${industry}, you're not fighting the market. You're fighting entropy.`,
+          video_style: "cinematic",
+          mood: "dark"
+        },
+        {
+          id: 2,
+          visual_prompt: "Glitching digital noise, static interference.",
+          text_overlay: "Every manual process is a signal blocked by noise.",
+          video_style: "glitch",
+          mood: "urgent"
+        },
+        {
+          id: 3,
+          visual_prompt: "Golden light breaking through geometric structures.",
+          text_overlay: "The shift: Don't manage the chaos. Automate the order.",
+          video_style: "abstract-tech",
+          mood: "bright"
+        },
+        {
+          id: 4,
+          visual_prompt: "Fast-moving data streams converging into a single beam.",
+          text_overlay: "Result: Velocity +40%. Overhead -60%. Pure Signal.",
+          video_style: "data-flow",
+          mood: "urgent"
+        },
+        {
+          id: 5,
+          visual_prompt: "Calm, expansive horizon with a digital overlay.",
+          text_overlay: "The future isn't waiting. It's compiling.",
+          video_style: "cinematic",
+          mood: "calm"
+        }
+      ]
     };
   }
 }

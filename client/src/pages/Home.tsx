@@ -1,6 +1,7 @@
 import { AmbientParticles } from "@/components/AmbientParticles";
 import { Atlas } from "@/components/Atlas";
 import { BackgroundLayer } from "@/components/BackgroundLayer";
+import { EmailCaptureForm } from "@/components/EmailCaptureForm";
 import { HUDOverlay } from "@/components/HUDOverlay";
 import { useCinematicIdle } from "@/hooks/useCinematicIdle";
 import { Button } from "@/components/ui/button";
@@ -51,7 +52,7 @@ export default function Home() {
   const { isIdle, idleLayer } = useCinematicIdle();
   
   const [state, setState] = useState<
-    "intro" | "calibration" | "processing" | "insight"
+    "intro" | "calibration" | "emailCapture" | "processing" | "insight"
   >("intro");
   const [selectedRole, setSelectedRole] = useState("");
   const [selectedIndustry, setSelectedIndustry] = useState("");
@@ -74,6 +75,11 @@ export default function Home() {
 
   const handleCalibrate = async () => {
     if (!selectedRole || !selectedIndustry || !selectedSignal) return;
+    setState("emailCapture");
+  };
+
+  const handleEmailCaptured = () => {
+    if (!selectedSignal) return;
     setState("processing");
 
     // Call the backend API with Gemini integration
@@ -336,7 +342,23 @@ export default function Home() {
             </motion.div>
           )}
 
-          {/* STATE 3: PROCESSING */}
+          {/* STATE 3: EMAIL CAPTURE */}
+          {state === "emailCapture" && (
+            <motion.div
+              key="emailCapture"
+              {...animationPatterns.sceneWipe}
+              className="flex flex-col items-center justify-center"
+            >
+              <EmailCaptureForm
+                role={selectedRole}
+                industry={selectedIndustry}
+                signal={selectedSignal?.title || ""}
+                onSuccess={handleEmailCaptured}
+              />
+            </motion.div>
+          )}
+
+          {/* STATE 4: PROCESSING */}
           {state === "processing" && (
             <motion.div
               key="processing"

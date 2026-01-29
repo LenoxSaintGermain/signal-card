@@ -8,6 +8,13 @@
       "when": 1769579077489,
       "tag": "0000_bored_payback",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1769711970171,
+      "tag": "0001_burly_gunslinger",
+      "breakpoints": true
     }
   ]
 }

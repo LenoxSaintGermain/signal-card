@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
+import { saveEmailCapture } from "./emailCaptures";
 import { generateInsight } from "./insight-generator";
 
 export const appRouter = router({
@@ -17,6 +18,20 @@ export const appRouter = router({
         success: true,
       } as const;
     }),
+  }),
+
+  emailCaptures: router({
+    save: publicProcedure
+      .input(z.object({
+        email: z.string().email("Please enter a valid email address"),
+        role: z.string().optional(),
+        industry: z.string().optional(),
+        signal: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        await saveEmailCapture(input);
+        return { success: true };
+      }),
   }),
 
   insights: router({

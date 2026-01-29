@@ -33,3 +33,13 @@
 - [ ] Optimize animations for 60fps performance
 - [ ] Test mobile responsiveness
 - [ ] Add accessibility features
+
+
+## Email Capture Feature
+- [x] Create database schema for email captures (email, role, industry, signal, timestamp)
+- [x] Build tRPC procedure for storing email captures
+- [x] Design email capture UI component with glassmorphism styling
+- [x] Add email validation and error handling
+- [x] Integrate email capture between calibration and insight phases
+- [x] Add success animation after email submission
+- [x] Write vitest tests for email capture API

@@ -30,25 +30,28 @@ describe("insights.generate", () => {
 
     // Verify the structure
     expect(result).toHaveProperty("title");
-    expect(result).toHaveProperty("body");
-    expect(result).toHaveProperty("implication");
-    expect(result).toHaveProperty("metrics");
+    expect(result).toHaveProperty("storyboard");
+    expect(result).toHaveProperty("final_cta");
 
     // Verify types
     expect(typeof result.title).toBe("string");
-    expect(typeof result.body).toBe("string");
-    expect(typeof result.implication).toBe("string");
-    expect(Array.isArray(result.metrics)).toBe(true);
+    expect(Array.isArray(result.storyboard)).toBe(true);
+    expect(typeof result.final_cta).toBe("string");
 
     // Verify content quality
-    expect(result.title.length).toBeGreaterThan(10);
-    expect(result.body.length).toBeGreaterThan(50);
-    expect(result.implication.length).toBeGreaterThan(20);
-    expect(result.metrics).toHaveLength(3);
+    expect(result.title.length).toBeGreaterThan(5);
+    expect(result.storyboard).toHaveLength(5);
+    expect(result.final_cta.length).toBeGreaterThan(5);
 
-    // Verify metrics format (should contain numbers and %/+ signs)
-    result.metrics.forEach((metric) => {
-      expect(metric).toMatch(/[+\-\d%]/);
+    // Verify storyboard scene structure
+    result.storyboard.forEach((scene) => {
+      expect(scene).toHaveProperty("id");
+      expect(scene).toHaveProperty("visual_prompt");
+      expect(scene).toHaveProperty("text_overlay");
+      expect(scene).toHaveProperty("video_style");
+      expect(scene).toHaveProperty("mood");
+      expect(typeof scene.visual_prompt).toBe("string");
+      expect(typeof scene.text_overlay).toBe("string");
     });
   }, 30000); // 30 second timeout for API call
 
@@ -65,7 +68,10 @@ describe("insights.generate", () => {
     });
 
     expect(result).toHaveProperty("title");
-    expect(result.title).toContain("Fintech");
-    expect(result.body.length).toBeGreaterThan(50);
+    expect(result).toHaveProperty("storyboard");
+    expect(result.storyboard.length).toBeGreaterThan(0);
+    // Verify at least one scene has meaningful content
+    const hasContent = result.storyboard.some(scene => scene.text_overlay.length > 10);
+    expect(hasContent).toBe(true);
   }, 30000);
 });

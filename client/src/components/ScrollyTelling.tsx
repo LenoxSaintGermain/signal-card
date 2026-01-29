@@ -8,6 +8,7 @@ interface Scene {
   text_overlay: string;
   video_style: string;
   mood: string;
+  video_url?: string;
 }
 
 interface ScrollyTellingProps {
@@ -61,8 +62,20 @@ function SceneSection({ scene, index, total }: { scene: Scene; index: number; to
 
   return (
     <section ref={ref} className="h-screen sticky top-0 flex items-center justify-center overflow-hidden">
-      {/* Placeholder Visual (Simulating Video) */}
-      <div className={`absolute inset-0 z-0 ${getBgColor(scene.mood)} opacity-40`} />
+      {/* Generated Video Background */}
+      {scene.video_url ? (
+        <video
+          src={scene.video_url}
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 z-0 w-full h-full object-cover opacity-60"
+        />
+      ) : (
+        /* Fallback colored background while video loads */
+        <div className={`absolute inset-0 z-0 ${getBgColor(scene.mood)} opacity-40`} />
+      )}
       <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_center,transparent_0%,black_100%)]" />
       
       {/* Content */}

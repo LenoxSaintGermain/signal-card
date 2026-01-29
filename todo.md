@@ -43,3 +43,15 @@
 - [x] Integrate email capture between calibration and insight phases
 - [x] Add success animation after email submission
 - [x] Write vitest tests for email capture API
+
+
+## Video Generation from Cinematic Prompts
+- [x] Research and select video generation API (Using Gemini Veo 3.1)
+- [x] Create backend video generation module
+- [x] Integrate video generation API with insight generator
+- [x] Update StoryboardScene interface to include video_url field
+- [x] Modify ScrollyTelling component to display actual generated videos
+- [x] Add video loading states and fallback placeholders
+- [ ] Implement video caching strategy to avoid regenerating same prompts
+- [ ] Add video preloading for smooth scrollytelling experience
+- [ ] Write vitest tests for video generation API

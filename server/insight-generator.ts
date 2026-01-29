@@ -1,4 +1,5 @@
 import { ENV } from "./_core/env";
+import { generateStoryboardVideos } from "./video-generator";
 
 interface InsightInput {
   signalId: string;
@@ -15,6 +16,7 @@ export interface StoryboardScene {
   text_overlay: string; // The "Script" text shown to user
   video_style: 'cinematic' | 'glitch' | 'data-flow' | 'abstract-tech';
   mood: 'dark' | 'bright' | 'urgent' | 'calm';
+  video_url?: string; // Generated video URL (populated after video generation)
 }
 
 export interface InsightOutput {
@@ -132,6 +134,17 @@ Make it feel like a high-end cinematic trailer for their future business success
     }
 
     const insight: InsightOutput = JSON.parse(content);
+
+    // Generate videos for each scene in parallel
+    console.log("[Insight Generator] Generating videos for storyboard scenes...");
+    const videoResults = await generateStoryboardVideos(insight.storyboard);
+
+    // Attach video URLs to scenes
+    insight.storyboard = insight.storyboard.map(scene => ({
+      ...scene,
+      video_url: videoResults.get(scene.id)?.video_url || undefined
+    }));
+
     return insight;
 
   } catch (error) {

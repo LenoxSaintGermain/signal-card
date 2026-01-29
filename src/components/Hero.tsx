@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const HolographicHero: React.FC = () => {
   const [text, setText] = useState("LOADING...");
-  const targetText = "LENOX.AI";
+  const targetText = "THIRDSIGNAL.AI";
 
   // Decoding Effect
   useEffect(() => {

@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSignal } from '../context/SignalContext';
 import { playSignalSound } from '../lib/sound';
+import { CONFIG } from '../config';
 
 interface BranchingNarrativeProps {
   onUnlockTool: () => void;
@@ -130,16 +131,24 @@ const BranchingNarrative: React.FC<BranchingNarrativeProps> = ({ onUnlockTool })
                 ))}
             </div>
 
-            <div className="flex gap-4">
-                <button className="flex-1 bg-white text-black font-bold py-3 rounded hover:bg-slate-200 transition-colors">
-                    {activeContent?.cta}
-                </button>
-                <button 
-                    onClick={onUnlockTool}
-                    className="flex-1 border border-white/20 hover:bg-white/10 py-3 rounded transition-colors text-sm"
+            <div className="flex flex-col gap-3">
+                <div className="flex gap-4">
+                    <button className="flex-1 bg-white text-black font-bold py-3 rounded hover:bg-slate-200 transition-colors">
+                        {activeContent?.cta}
+                    </button>
+                    <button 
+                        onClick={onUnlockTool}
+                        className="flex-1 border border-white/20 hover:bg-white/10 py-3 rounded transition-colors text-sm"
+                    >
+                        Access Generator &rarr;
+                    </button>
+                </div>
+                <a 
+                    href={`mailto:${CONFIG.emails.general}`}
+                    className="w-full text-center py-2 text-[10px] font-mono text-slate-500 hover:text-holo-cyan transition-colors tracking-widest border border-white/5 rounded"
                 >
-                    Access Generator &rarr;
-                </button>
+                    CONTACT_MISSION_CONTROL // {CONFIG.emails.general.toUpperCase()}
+                </a>
             </div>
 
         </motion.div>

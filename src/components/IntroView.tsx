@@ -3,6 +3,7 @@ import React, { useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useSignal } from '../context/SignalContext';
 import { playSignalSound } from '../lib/sound';
+import { CONFIG } from '../config';
 
 interface IntroViewProps {
   onComplete: () => void;
@@ -49,7 +50,7 @@ const IntroView: React.FC<IntroViewProps> = ({ onComplete }) => {
           LENOX WILLIAMS
         </h1>
         <p className="text-holo-cyan font-mono text-sm tracking-[0.2em]">
-          THIRD SIGNAL // ARCHITECT
+          {CONFIG.brand.toUpperCase()} // ARCHITECT
         </p>
       </motion.div>
 

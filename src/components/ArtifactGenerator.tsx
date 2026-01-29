@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useSignal } from '../context/SignalContext';
 import { playSignalSound } from '../lib/sound';
+import { CONFIG } from '../config';
 
 const ArtifactGenerator: React.FC = () => {
     const { generateArtifact } = useSignal();
@@ -78,7 +79,7 @@ const ArtifactGenerator: React.FC = () => {
                             <h1 className="text-3xl font-bold font-display text-white mb-2">THE INNOVATION PARADOX</h1>
                             <div className="w-16 h-1 bg-system-amber mx-auto my-6" />
                             <p className="text-slate-300 italic">"The real risk isn't implementation.<br/>It's being too late."</p>
-                            <div className="absolute bottom-4 right-4 text-xs text-white/30 font-mono">via Third Signal</div>
+                            <div className="absolute bottom-4 right-4 text-xs text-white/30 font-mono">via {CONFIG.brand}</div>
                         </div>
                     </div>
                     <div className="p-6 flex justify-between items-center bg-white/5">

@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
+import { CONFIG } from '../config';
 
 const Portfolio: React.FC = () => {
     const container = {
@@ -143,7 +144,7 @@ const Portfolio: React.FC = () => {
 
                 {/* CTA Section */}
                 <motion.div variants={item} className="mt-20 text-center">
-                    <a href="mailto:connect@lenox.ai" className="group relative inline-flex items-center justify-center px-10 py-5 bg-white text-slate-950 font-bold uppercase tracking-widest overflow-hidden hover:scale-105 transition-transform duration-300">
+                    <a href={`mailto:${CONFIG.emails.personal}`} className="group relative inline-flex items-center justify-center px-10 py-5 bg-white text-slate-950 font-bold uppercase tracking-widest overflow-hidden hover:scale-105 transition-transform duration-300">
                         <span className="relative z-10 mr-2">Deploy Intelligence</span>
                         <span className="relative z-10 group-hover:translate-x-1 transition-transform">→</span>
                         <div className="absolute inset-0 bg-cyan-400/20 translate-y-full transition-transform group-hover:translate-y-0 duration-300"></div>

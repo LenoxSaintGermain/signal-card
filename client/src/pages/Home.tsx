@@ -93,7 +93,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen overflow-hidden relative selection:bg-cyan-500/30">
+    <div className="min-h-[100dvh] overflow-x-hidden relative selection:bg-cyan-500/30">
       {/* Immersive Background Layer */}
       <BackgroundLayer
         type="gradient"
@@ -107,14 +107,14 @@ export default function Home() {
       <AmbientParticles active={idleLayer === "signalDrift"} />
 
       {/* Main Content */}
-      <div className="relative z-20 container max-w-5xl mx-auto px-6 min-h-screen flex flex-col justify-center">
+      <div className="relative z-20 container max-w-5xl mx-auto px-4 sm:px-6 min-h-[100dvh] flex flex-col justify-center py-20 sm:py-0">
         <AnimatePresence mode="wait">
           {/* STATE 1: INTRO */}
           {state === "intro" && (
             <motion.div
               key="intro"
               {...animationPatterns.sceneWipe}
-              className="space-y-10 text-center"
+              className="space-y-8 sm:space-y-10 text-center"
             >
               {/* System Status Badge */}
               <motion.div
@@ -132,10 +132,10 @@ export default function Home() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.4, duration: motionTokens.duration.lg }}
-                className="font-display font-bold text-6xl md:text-8xl lg:text-9xl tracking-tighter leading-none text-white drop-shadow-[0_0_30px_rgba(6,182,212,0.5)]"
+                className="font-display font-bold text-4xl sm:text-6xl md:text-8xl lg:text-9xl tracking-tighter leading-none text-white drop-shadow-[0_0_30px_rgba(6,182,212,0.5)]"
               >
                 <DecodingText text="THIRD SIGNAL" delay={600} />{" "}
-                <span className="text-primary font-light">
+                <span className="text-primary font-light block sm:inline">
                   <DecodingText text="LABS" delay={1200} />
                 </span>
               </motion.h1>
@@ -147,11 +147,11 @@ export default function Home() {
                 transition={{ delay: 1.8, duration: motionTokens.duration.lg }}
                 className="flex items-center justify-center gap-4"
               >
-                <div className="h-px w-16 bg-cyan-500/40" />
-                <p className="text-lg md:text-xl font-light font-sans tracking-[0.25em] text-slate-300 uppercase">
+                <div className="h-px w-8 sm:w-16 bg-cyan-500/40" />
+                <p className="text-sm sm:text-lg md:text-xl font-light font-sans tracking-[0.25em] text-slate-300 uppercase">
                   Operational
                 </p>
-                <div className="h-px w-16 bg-cyan-500/40" />
+                <div className="h-px w-8 sm:w-16 bg-cyan-500/40" />
               </motion.div>
 
               {/* Subtitle */}
@@ -159,7 +159,7 @@ export default function Home() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 2.2, duration: motionTokens.duration.md }}
-                className="text-xl md:text-2xl text-slate-400 max-w-3xl mx-auto leading-relaxed font-light"
+                className="text-lg sm:text-xl md:text-2xl text-slate-400 max-w-3xl mx-auto leading-relaxed font-light px-4"
               >
                 Most enterprises are drowning in noise.
                 <br />
@@ -177,13 +177,13 @@ export default function Home() {
                 <Button
                   size="lg"
                   onClick={handleStart}
-                  className="group relative h-16 px-10 text-base font-bold font-mono tracking-widest uppercase bg-cyan-950/30 border-2 border-cyan-400 text-cyan-400 hover:bg-cyan-400/10 hover:shadow-[0_0_40px_rgba(6,182,212,0.4)] transition-all duration-300 overflow-hidden"
+                  className="group relative h-14 sm:h-16 px-8 sm:px-10 text-sm sm:text-base font-bold font-mono tracking-widest uppercase bg-cyan-950/30 border-2 border-cyan-400 text-cyan-400 hover:bg-cyan-400/10 hover:shadow-[0_0_40px_rgba(6,182,212,0.4)] transition-all duration-300 overflow-hidden w-full sm:w-auto"
                   style={{
                     clipPath:
                       "polygon(8% 0, 100% 0, 100% 70%, 92% 100%, 0 100%, 0 30%)",
                   }}
                 >
-                  <span className="relative z-10 flex items-center gap-3">
+                  <span className="relative z-10 flex items-center justify-center gap-3">
                     <Zap size={20} className="animate-pulse" />
                     Initialize Analysis
                     <ArrowRight size={18} />

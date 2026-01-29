@@ -22,7 +22,7 @@ export function BackgroundLayer({
   }, [type, src]);
 
   return (
-    <div className="absolute inset-0 z-0 overflow-hidden">
+    <div className="fixed inset-0 z-0 overflow-hidden">
       {/* Base Gradient Layer (always present) */}
       <div
         className={`absolute inset-0 bg-gradient-to-b ${fallbackGradient}`}

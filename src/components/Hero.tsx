@@ -118,6 +118,7 @@ const HolographicHero: React.FC = () => {
           whileHover={{ scale: 1.05, textShadow: "0px 0px 8px rgb(6,182,212)" }}
           whileTap={{ scale: 0.95 }}
           transition={{ delay: 1.5 }}
+          onClick={() => window.location.href = '/contact.html'}
           className="group relative px-12 py-6 bg-cyan-950/30 border border-cyan-400 text-cyan-400 font-bold font-mono tracking-widest uppercase overflow-hidden"
           style={{ clipPath: 'polygon(10% 0, 100% 0, 100% 70%, 90% 100%, 0 100%, 0 30%)' }}
         >

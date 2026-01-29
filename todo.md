@@ -52,6 +52,13 @@
 - [x] Update StoryboardScene interface to include video_url field
 - [x] Modify ScrollyTelling component to display actual generated videos
 - [x] Add video loading states and fallback placeholders
-- [ ] Implement video caching strategy to avoid regenerating same prompts
+- [x] Implement video caching strategy to avoid regenerating same prompts
+  - [x] Design database schema for video cache (prompt hash, video URL, metadata)
+  - [x] Create videoCache table in drizzle schema
+  - [x] Run database migration with pnpm db:push
+  - [x] Implement cache lookup function in video generator
+  - [x] Add cache storage after successful video generation
+  - [x] Create hash function for prompt deduplication
+  - [x] Add cache hit/miss logging for monitoring
 - [ ] Add video preloading for smooth scrollytelling experience
 - [ ] Write vitest tests for video generation API

@@ -40,3 +40,29 @@ export const emailCaptures = mysqlTable("emailCaptures", {
 
 export type EmailCapture = typeof emailCaptures.$inferSelect;
 export type InsertEmailCapture = typeof emailCaptures.$inferInsert;
+
+/**
+ * Video cache table for storing generated videos
+ * Reduces API costs and latency by caching videos based on prompt hash
+ */
+export const videoCache = mysqlTable("videoCache", {
+  id: int("id").autoincrement().primaryKey(),
+  /** SHA-256 hash of the visual prompt for deduplication */
+  promptHash: varchar("promptHash", { length: 64 }).notNull().unique(),
+  /** Original visual prompt text */
+  visualPrompt: text("visualPrompt").notNull(),
+  /** URL to the generated video in S3 storage */
+  videoUrl: text("videoUrl").notNull(),
+  /** Video style used for generation */
+  videoStyle: varchar("videoStyle", { length: 50 }),
+  /** Mood/tone of the video */
+  mood: varchar("mood", { length: 50 }),
+  /** Number of times this cached video has been reused */
+  hitCount: int("hitCount").default(0).notNull(),
+  /** Last time this cache entry was accessed */
+  lastAccessedAt: timestamp("lastAccessedAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type VideoCache = typeof videoCache.$inferSelect;
+export type InsertVideoCache = typeof videoCache.$inferInsert;

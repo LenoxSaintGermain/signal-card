@@ -31,6 +31,7 @@ export interface InsightOutput {
  */
 export async function generateInsight(input: InsightInput): Promise<InsightOutput> {
   const { signalId, signalTitle, signalTruth, role, industry, rawInput } = input;
+  let insight: InsightOutput;
 
   const prompt = `You are a strategic AI consultant for Third Signal Labs. Generate a 5-scene "scrollytelling" storyboard script for a mobile experience based on the following context:
 
@@ -133,25 +134,13 @@ Make it feel like a high-end cinematic trailer for their future business success
       throw new Error("No content returned from Gemini API");
     }
 
-    const insight: InsightOutput = JSON.parse(content);
-
-    // Generate videos for each scene in parallel
-    console.log("[Insight Generator] Generating videos for storyboard scenes...");
-    const videoResults = await generateStoryboardVideos(insight.storyboard);
-
-    // Attach video URLs to scenes
-    insight.storyboard = insight.storyboard.map(scene => ({
-      ...scene,
-      video_url: videoResults.get(scene.id)?.video_url || undefined
-    }));
-
-    return insight;
+    insight = JSON.parse(content);
 
   } catch (error) {
-    console.error("[Insight Generator] Error:", error);
+    console.error("[Insight Generator] Text Generation Error:", error);
 
     // Fallback Storyboard
-    return {
+    insight = {
       title: `The ${industry} Paradox`,
       final_cta: "Deploy Intelligence",
       storyboard: [
@@ -193,4 +182,21 @@ Make it feel like a high-end cinematic trailer for their future business success
       ]
     };
   }
+
+  // Generate videos for each scene in parallel (for both API and Fallback paths)
+  try {
+    console.log("[Insight Generator] Generating videos for storyboard scenes...");
+    const videoResults = await generateStoryboardVideos(insight.storyboard);
+
+    // Attach video URLs to scenes
+    insight.storyboard = insight.storyboard.map(scene => ({
+      ...scene,
+      video_url: videoResults.get(scene.id)?.video_url || undefined
+    }));
+  } catch (videoError) {
+    console.error("[Insight Generator] Video Generation Error:", videoError);
+    // Return insight with text-only if video gen completely fails
+  }
+
+  return insight;
 }

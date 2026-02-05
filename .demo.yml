@@ -1,0 +1,10 @@
+# Demo Catalog metadata — parsed by sync agent
+title: Third Signal Labs - Agentic Business Card
+pitch: AI-powered digital business card that delivers personalized strategic insights through cinematic scrollytelling experiences
+status: ready_for_launch
+category: ai
+platform: manus
+featured: true
+demo_video:
+cover_prompt: >
+  A dark futuristic HUD interface with holographic cyan grid floor, glassmorphism panels displaying strategic data visualizations, and golden accent lights creating a premium AI consulting aesthetic

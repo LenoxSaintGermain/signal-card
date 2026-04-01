@@ -12,7 +12,7 @@ interface Particle {
 
 export function AmbientParticles({ active = false }: { active?: boolean }) {
   const particles = useMemo(() => {
-    const count = 6; // Max particles as per spec
+    const count = 8;
     return Array.from({ length: count }, (_, i) => ({
       id: i,
       x: Math.random() * 100,
@@ -46,7 +46,7 @@ export function AmbientParticles({ active = false }: { active?: boolean }) {
             repeat: Infinity,
             ease: "linear",
           }}
-          className="absolute rounded-full bg-cyan-400/80 blur-sm"
+          className="absolute rounded-full bg-emerald-200/70 blur-sm"
           style={{
             width: particle.size,
             height: particle.size,

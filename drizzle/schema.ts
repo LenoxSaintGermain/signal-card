@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -66,3 +66,29 @@ export const videoCache = mysqlTable("videoCache", {
 
 export type VideoCache = typeof videoCache.$inferSelect;
 export type InsertVideoCache = typeof videoCache.$inferInsert;
+
+/**
+ * Cinema Movies table
+ * Stores the full generated storyboard experience for replay
+ */
+export const movies = mysqlTable("movies", {
+  id: int("id").autoincrement().primaryKey(),
+  /** The unique slug or ID for sharing/URL */
+  slug: varchar("slug", { length: 64 }).notNull().unique(),
+  /** Title of the movie/insight */
+  title: text("title").notNull(),
+  /** JSON blob of the full storyboard (scenes, text, video URLs) */
+  storyboard: json("storyboard").notNull(),
+  /** The final CTA text */
+  finalCta: text("finalCta"),
+  /** User email who generated this */
+  userEmail: varchar("userEmail", { length: 320 }),
+  /** Role context used for generation */
+  role: varchar("role", { length: 100 }),
+  /** Industry context used for generation */
+  industry: varchar("industry", { length: 100 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Movie = typeof movies.$inferSelect;
+export type InsertMovie = typeof movies.$inferInsert;

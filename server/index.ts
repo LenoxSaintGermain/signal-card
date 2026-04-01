@@ -1,12 +1,15 @@
+import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
 import path from "path";
 import { fileURLToPath } from "url";
+import { validateEnv } from "./_core/env";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 async function startServer() {
+  validateEnv();
   const app = express();
   const server = createServer(app);
 

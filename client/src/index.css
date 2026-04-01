@@ -42,105 +42,79 @@
   --color-sidebar-ring: var(--sidebar-ring);
   
   /* Custom fonts */
-  --font-sans: "Inter", sans-serif;
-  --font-display: "Rajdhani", sans-serif;
+  --font-sans: "Satoshi", "Inter", sans-serif;
+  --font-display: "Satoshi", "Inter", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
 }
 
-/* 
-  Third Signal Labs - Signal Processor Theme
-  Deep Navy (#0A1628) | Metallic Gold (#D4AF37) | Electric Cyan (#00D9FF)
-*/
-
 :root {
   /* Light mode fallback (though we default to dark) */
-  --primary: #0A1628;
-  --primary-foreground: #FFFFFF;
-  --sidebar-primary: #0A1628;
-  --sidebar-primary-foreground: #FFFFFF;
-  --chart-1: #0A1628;
-  --chart-2: #D4AF37;
-  --chart-3: #00D9FF;
-  --chart-4: #1E293B;
-  --chart-5: #334155;
+  --primary: #11131A;
+  --primary-foreground: #F7F8FB;
+  --sidebar-primary: #11131A;
+  --sidebar-primary-foreground: #F7F8FB;
+  --chart-1: #11131A;
+  --chart-2: #5EEAD4;
+  --chart-3: #7DD3FC;
+  --chart-4: #D4D9E2;
+  --chart-5: #A8B1C2;
   --radius: 0.5rem;
-  --background: #FFFFFF;
-  --foreground: #0A1628;
-  --card: #F8FAFC;
-  --card-foreground: #0A1628;
+  --background: #F7F7F5;
+  --foreground: #11131A;
+  --card: #FFFFFF;
+  --card-foreground: #11131A;
   --popover: #FFFFFF;
-  --popover-foreground: #0A1628;
-  --secondary: #F1F5F9;
-  --secondary-foreground: #0A1628;
-  --muted: #F1F5F9;
-  --muted-foreground: #64748B;
-  --accent: #F1F5F9;
-  --accent-foreground: #0A1628;
-  --destructive: #EF4444;
+  --popover-foreground: #11131A;
+  --secondary: #EFF1F5;
+  --secondary-foreground: #11131A;
+  --muted: #EFF1F5;
+  --muted-foreground: #5B6472;
+  --accent: #E6F6F4;
+  --accent-foreground: #0B0D12;
+  --destructive: #DC2626;
   --destructive-foreground: #FFFFFF;
-  --border: #E2E8F0;
-  --input: #E2E8F0;
-  --ring: #0A1628;
-  --sidebar: #F8FAFC;
-  --sidebar-foreground: #0A1628;
-  --sidebar-accent: #F1F5F9;
-  --sidebar-accent-foreground: #0A1628;
-  --sidebar-border: #E2E8F0;
-  --sidebar-ring: #0A1628;
+  --border: #E2E5EC;
+  --input: #E2E5EC;
+  --ring: #5EEAD4;
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #11131A;
+  --sidebar-accent: #EFF1F5;
+  --sidebar-accent-foreground: #11131A;
+  --sidebar-border: #E2E5EC;
+  --sidebar-ring: #5EEAD4;
 }
 
 .dark {
-  /* Deep Navy Background */
-  --background: #0A1628;
-  --foreground: #F8FAFC;
-  
-  /* Card Background (Slightly lighter navy) */
-  --card: #112240;
-  --card-foreground: #F8FAFC;
-  
-  /* Popover */
-  --popover: #112240;
-  --popover-foreground: #F8FAFC;
-  
-  /* Primary (Gold) */
-  --primary: #D4AF37;
-  --primary-foreground: #0A1628;
-  
-  /* Secondary (Cyan/Teal muted) */
-  --secondary: #1E293B;
-  --secondary-foreground: #F8FAFC;
-  
-  /* Muted */
-  --muted: #1E293B;
-  --muted-foreground: #94A3B8;
-  
-  /* Accent (Cyan) */
-  --accent: #1E293B;
-  --accent-foreground: #00D9FF;
-  
-  /* Destructive */
+  --background: #0B0D12;
+  --foreground: #F7F8FB;
+  --card: #11131A;
+  --card-foreground: #F7F8FB;
+  --popover: #11131A;
+  --popover-foreground: #F7F8FB;
+  --primary: #5EEAD4;
+  --primary-foreground: #0B0D12;
+  --secondary: #1A1D26;
+  --secondary-foreground: #F7F8FB;
+  --muted: #1A1D26;
+  --muted-foreground: #9AA3B2;
+  --accent: #1A1D26;
+  --accent-foreground: #5EEAD4;
   --destructive: #7F1D1D;
-  --destructive-foreground: #F8FAFC;
-  
-  /* Border (Subtle Navy) */
-  --border: #1E293B;
-  --input: #1E293B;
-  --ring: #D4AF37;
-  
-  /* Charts */
-  --chart-1: #D4AF37; /* Gold */
-  --chart-2: #00D9FF; /* Cyan */
-  --chart-3: #FFFFFF; /* White */
-  --chart-4: #94A3B8; /* Slate */
-  --chart-5: #1E293B; /* Dark Slate */
-  
-  /* Sidebar */
-  --sidebar: #0A1628;
-  --sidebar-foreground: #F8FAFC;
-  --sidebar-accent: #1E293B;
-  --sidebar-accent-foreground: #D4AF37;
-  --sidebar-border: #1E293B;
-  --sidebar-ring: #D4AF37;
+  --destructive-foreground: #F7F8FB;
+  --border: #1F2430;
+  --input: #1F2430;
+  --ring: #5EEAD4;
+  --chart-1: #5EEAD4;
+  --chart-2: #7DD3FC;
+  --chart-3: #F7F8FB;
+  --chart-4: #9AA3B2;
+  --chart-5: #1F2430;
+  --sidebar: #0B0D12;
+  --sidebar-foreground: #F7F8FB;
+  --sidebar-accent: #1A1D26;
+  --sidebar-accent-foreground: #5EEAD4;
+  --sidebar-border: #1F2430;
+  --sidebar-ring: #5EEAD4;
 }
 
 @layer base {
@@ -148,7 +122,7 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
   }
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),

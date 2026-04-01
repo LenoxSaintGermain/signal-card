@@ -30,17 +30,17 @@ export function InputMode({ onCommit }: InputModeProps) {
   };
 
   return (
-    <div className="w-full max-w-md mx-auto space-y-6">
+    <div className="w-full max-w-2xl mx-auto space-y-6">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="text-center space-y-2"
       >
-        <h2 className="font-display text-3xl font-bold text-white">
-          Confess to the Signal
+        <h2 className="font-display text-3xl sm:text-4xl font-semibold text-white">
+          Describe the friction.
         </h2>
-        <p className="text-slate-400">
-          What's broken? What's too slow? Tell me what's really going on.
+        <p className="text-slate-400 text-base sm:text-lg">
+          Capture the constraint, not the symptom. We’ll shape the signal.
         </p>
       </motion.div>
 
@@ -48,13 +48,13 @@ export function InputMode({ onCommit }: InputModeProps) {
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.2 }}
-        className="relative"
+        className="relative rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.35)]"
       >
         <Textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="E.g., My team is drowning in compliance paperwork..."
-          className="min-h-[150px] bg-slate-900/50 border-cyan-500/30 text-white placeholder:text-slate-600 resize-none p-4 text-lg font-mono focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400"
+          placeholder="E.g., Every expansion request stalls because compliance proof is manual."
+          className="min-h-[170px] bg-transparent border-white/10 text-white placeholder:text-slate-500 resize-none p-4 text-base sm:text-lg focus:border-emerald-300 focus:ring-1 focus:ring-emerald-300/40"
         />
         
         <div className="absolute bottom-4 right-4 flex gap-2">
@@ -62,7 +62,7 @@ export function InputMode({ onCommit }: InputModeProps) {
             size="icon"
             variant="ghost"
             onClick={toggleListening}
-            className={`rounded-full hover:bg-cyan-500/10 ${isListening ? 'text-red-400 animate-pulse' : 'text-cyan-400'}`}
+            className={`rounded-full hover:bg-white/10 ${isListening ? 'text-red-400 animate-pulse' : 'text-emerald-200'}`}
           >
             <Mic className="w-5 h-5" />
           </Button>
@@ -70,7 +70,7 @@ export function InputMode({ onCommit }: InputModeProps) {
             size="icon"
             onClick={handleSubmit}
             disabled={!input.trim()}
-            className="rounded-full bg-cyan-500 hover:bg-cyan-400 text-slate-950"
+            className="rounded-full bg-emerald-300 text-slate-950 hover:bg-emerald-200"
           >
             <Send className="w-5 h-5" />
           </Button>

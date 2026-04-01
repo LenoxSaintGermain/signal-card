@@ -1,6 +1,6 @@
 import { ENV } from "./_core/env";
 import { getDb } from "./db";
-import { videoCache } from "../drizzle/schema";
+import { movies, videoCache } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { createHash } from "crypto";
 
@@ -185,4 +185,78 @@ export async function generateStoryboardVideos(
   await Promise.all(promises);
 
   return results;
+}
+
+type StoryboardSceneInput = {
+  id: number;
+  visual_prompt: string;
+  video_style?: string;
+  mood?: string;
+  video_url?: string;
+};
+
+function extractStoryboardScenes(
+  storyboardPayload: unknown
+): StoryboardSceneInput[] | null {
+  if (!storyboardPayload || typeof storyboardPayload !== "object") return null;
+  const payload = storyboardPayload as { storyboard?: unknown };
+  if (!Array.isArray(payload.storyboard)) return null;
+
+  const scenes = payload.storyboard.filter((scene): scene is StoryboardSceneInput => {
+    if (!scene || typeof scene !== "object") return false;
+    const record = scene as Record<string, unknown>;
+    return (
+      typeof record.id === "number" &&
+      typeof record.visual_prompt === "string"
+    );
+  });
+
+  return scenes.length > 0 ? scenes : null;
+}
+
+export async function generateAndPersistStoryboardVideos(
+  slug: string,
+  storyboardPayload: unknown
+): Promise<void> {
+  const scenes = extractStoryboardScenes(storyboardPayload);
+  if (!scenes) {
+    console.warn("[Video Generator] Storyboard payload missing scenes, skipping video generation.");
+    return;
+  }
+
+  const scenesToGenerate = scenes.filter(scene => !scene.video_url);
+  if (scenesToGenerate.length === 0) {
+    return;
+  }
+
+  const videoResults = await generateStoryboardVideos(scenesToGenerate);
+
+  const updatedScenes = scenes.map(scene => ({
+    ...scene,
+    video_url: scene.video_url ?? videoResults.get(scene.id)?.video_url,
+  }));
+
+  if (!updatedScenes.some(scene => scene.video_url)) {
+    return;
+  }
+
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Video Generator] Database not available, skipping storyboard update.");
+    return;
+  }
+
+  const basePayload =
+    storyboardPayload && typeof storyboardPayload === "object"
+      ? (storyboardPayload as Record<string, unknown>)
+      : {};
+  const updatedPayload = {
+    ...basePayload,
+    storyboard: updatedScenes,
+  };
+
+  await db
+    .update(movies)
+    .set({ storyboard: updatedPayload })
+    .where(eq(movies.slug, slug));
 }

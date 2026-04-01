@@ -22,42 +22,29 @@ export function HypnoticWait() {
   }, []);
 
   return (
-    <div className="flex flex-col items-center justify-center space-y-12">
-      {/* Hypnotic Visual */}
-      <div className="relative w-64 h-64">
-        {[...Array(3)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute inset-0 rounded-full border-2 border-cyan-500/30"
-            animate={{
-              scale: [1, 1.5, 1],
-              opacity: [0.5, 0, 0.5],
-              rotate: [0, 180, 360],
-            }}
-            transition={{
-              duration: 3,
-              delay: i * 0.5,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-          />
-        ))}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse shadow-[0_0_20px_rgba(6,182,212,0.8)]" />
+    <div className="flex flex-col items-center justify-center space-y-10">
+      <div className="w-[min(520px,90vw)] rounded-3xl border border-white/10 bg-white/5 px-8 py-10 text-center shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur-xl">
+        <div className="mb-8 text-xs font-mono uppercase tracking-[0.4em] text-slate-400">
+          Signal Calibration
         </div>
-      </div>
-
-      {/* Donna-style Text Stream */}
-      <div className="h-12 overflow-hidden text-center">
-        <motion.p
-          key={message}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          className="font-mono text-cyan-400 text-sm tracking-widest uppercase"
-        >
-          {message}
-        </motion.p>
+        <div className="relative h-2 w-full overflow-hidden rounded-full bg-white/10">
+          <motion.div
+            className="absolute inset-y-0 left-0 w-1/3 rounded-full bg-gradient-to-r from-emerald-200 via-teal-300 to-sky-300"
+            animate={{ x: ["-35%", "135%"] }}
+            transition={{ duration: 2.2, repeat: Infinity, ease: "linear" }}
+          />
+        </div>
+        <div className="mt-6 h-10 overflow-hidden">
+          <motion.p
+            key={message}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            className="text-sm font-mono uppercase tracking-[0.3em] text-emerald-200"
+          >
+            {message}
+          </motion.p>
+        </div>
       </div>
     </div>
   );

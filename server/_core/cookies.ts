@@ -21,6 +21,10 @@ function isSecureRequest(req: Request) {
   return protoList.some(proto => proto.trim().toLowerCase() === "https");
 }
 
+function getSameSiteValue(secure: boolean): CookieOptions["sameSite"] {
+  return secure ? "none" : "lax";
+}
+
 export function getSessionCookieOptions(
   req: Request
 ): Pick<CookieOptions, "domain" | "httpOnly" | "path" | "sameSite" | "secure"> {
@@ -39,10 +43,25 @@ export function getSessionCookieOptions(
   //       ? hostname
   //       : undefined;
 
+  const secure = isSecureRequest(req);
+
   return {
     httpOnly: true,
     path: "/",
-    sameSite: "none",
-    secure: isSecureRequest(req),
+    sameSite: getSameSiteValue(secure),
+    secure,
+  };
+}
+
+export function getOAuthStateCookieOptions(
+  req: Request
+): Pick<CookieOptions, "httpOnly" | "path" | "sameSite" | "secure"> {
+  const secure = isSecureRequest(req);
+
+  return {
+    httpOnly: true,
+    path: "/api/oauth/callback",
+    sameSite: "lax",
+    secure,
   };
 }

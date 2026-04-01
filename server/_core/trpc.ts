@@ -2,6 +2,7 @@ import { NOT_ADMIN_ERR_MSG, UNAUTHED_ERR_MSG } from '@shared/const';
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import type { TrpcContext } from "./context";
+import { enforceRateLimit, type RateLimitConfig } from "./rateLimit";
 
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
@@ -9,6 +10,12 @@ const t = initTRPC.context<TrpcContext>().create({
 
 export const router = t.router;
 export const publicProcedure = t.procedure;
+
+const withRateLimit = (config: RateLimitConfig) =>
+  t.middleware(async ({ ctx, path, next }) => {
+    enforceRateLimit(ctx.req, ctx.res, config, path);
+    return next();
+  });
 
 const requireUser = t.middleware(async opts => {
   const { ctx, next } = opts;
@@ -43,3 +50,6 @@ export const adminProcedure = t.procedure.use(
     });
   }),
 );
+
+export const rateLimitedPublicProcedure = (config: RateLimitConfig) =>
+  publicProcedure.use(withRateLimit(config));

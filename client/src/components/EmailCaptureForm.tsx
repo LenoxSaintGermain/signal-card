@@ -47,15 +47,15 @@ export function EmailCaptureForm({ role, industry, signal, onSuccess }: EmailCap
       transition={{ duration: 0.3 }}
       className="w-full max-w-md mx-auto"
     >
-      <div className="glass-card p-8 border border-cyan-500/30">
+      <div className="glass-card p-8 border border-white/10 bg-white/5 backdrop-blur-xl rounded-3xl">
         {/* Icon */}
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-          className="w-16 h-16 mx-auto mb-6 rounded-full bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center"
+          className="w-16 h-16 mx-auto mb-6 rounded-full bg-emerald-200/10 border border-emerald-200/30 flex items-center justify-center"
         >
-          <Mail className="w-8 h-8 text-cyan-400" />
+          <Mail className="w-8 h-8 text-emerald-200" />
         </motion.div>
 
         {/* Title */}
@@ -63,7 +63,7 @@ export function EmailCaptureForm({ role, industry, signal, onSuccess }: EmailCap
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="text-2xl font-display font-bold text-center mb-2 text-white"
+          className="text-2xl font-display font-semibold text-center mb-2 text-white"
         >
           Access Your Intelligence
         </motion.h3>
@@ -73,7 +73,7 @@ export function EmailCaptureForm({ role, industry, signal, onSuccess }: EmailCap
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="text-slate-400 text-center mb-8 text-sm"
+          className="text-slate-300 text-center mb-8 text-sm"
         >
           Enter your email to receive your personalized strategic insight
         </motion.p>
@@ -91,7 +91,7 @@ export function EmailCaptureForm({ role, industry, signal, onSuccess }: EmailCap
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={saveEmail.isPending}
-              className="h-12 bg-slate-900/50 border-cyan-500/30 text-white placeholder:text-slate-500 focus:border-cyan-400 focus:ring-cyan-400/20"
+              className="h-12 bg-transparent border-white/10 text-white placeholder:text-slate-500 focus:border-emerald-200 focus:ring-emerald-200/20"
               autoFocus
             />
           </motion.div>
@@ -104,7 +104,7 @@ export function EmailCaptureForm({ role, industry, signal, onSuccess }: EmailCap
             <Button
               type="submit"
               disabled={saveEmail.isPending}
-              className="w-full h-12 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold tracking-wide tactical-button group"
+              className="w-full h-12 bg-emerald-300 hover:bg-emerald-200 text-slate-950 font-semibold tracking-[0.3em] uppercase group rounded-full"
             >
               {saveEmail.isPending ? (
                 <span>Processing...</span>

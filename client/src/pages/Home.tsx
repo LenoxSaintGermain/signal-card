@@ -9,8 +9,9 @@ import { useCinematicIdle } from "@/hooks/useCinematicIdle";
 import { animationPatterns, motionTokens } from "@/lib/motion-tokens";
 import { trpc } from "@/lib/trpc";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowRight, Zap } from "lucide-react";
+import { ArrowRight, Zap, Film } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Link } from "wouter";
 
 // Decoding Text Effect
 const DecodingText = ({ text, delay = 0 }: { text: string; delay?: number }) => {
@@ -41,19 +42,65 @@ const DecodingText = ({ text, delay = 0 }: { text: string; delay?: number }) => 
 };
 
 export default function Home() {
-  const { isIdle, idleLayer } = useCinematicIdle();
+  const { idleLayer } = useCinematicIdle();
   
   const [state, setState] = useState<
     "intro" | "confessional" | "processing" | "immersive"
   >("intro");
   
   const [storyboardData, setStoryboardData] = useState<any>(null);
+  const [movieSlug, setMovieSlug] = useState<string | null>(null);
+  const [lastConfession, setLastConfession] = useState<string | null>(null);
 
-  // Use tRPC mutation for real-time Gemini insights
+  const { data: savedMovie } = trpc.cinema.get.useQuery(
+    { slug: movieSlug ?? "" },
+    {
+      enabled: !!movieSlug,
+      refetchInterval: query => {
+        const data = query.state.data;
+        const scenes = (data?.storyboard as { storyboard?: Array<{ video_url?: string }> } | undefined)?.storyboard;
+        if (!Array.isArray(scenes)) return 5000;
+        const missing = scenes.some((scene: any) => !scene?.video_url);
+        return missing ? 5000 : false;
+      },
+    }
+  );
+
+  const savedStoryboard =
+    (savedMovie?.storyboard as { storyboard?: Array<{ video_url?: string }> } | undefined) ??
+    undefined;
+
+  useEffect(() => {
+    if (savedStoryboard) {
+      setStoryboardData(savedStoryboard);
+    }
+  }, [savedStoryboard]);
+
+  // tRPC mutations
+  const saveToCinema = trpc.cinema.save.useMutation();
   const generateInsight = trpc.insights.generate.useMutation({
-    onSuccess: (data) => {
-      setStoryboardData(data);
+    onSuccess: async (data) => {
+      const payload =
+        lastConfession && lastConfession.trim().length > 0
+          ? { ...data, raw_input: lastConfession }
+          : data;
+
+      setStoryboardData(payload);
       setState("immersive");
+      
+      // Auto-save to cinema for persistence
+      try {
+        const saveResult = await saveToCinema.mutateAsync({
+          title: data.title,
+          storyboard: payload,
+          finalCta: data.final_cta,
+          role: "Executive", // TODO: Persist these from input
+          industry: "General",
+        });
+        setMovieSlug(saveResult.slug);
+      } catch (err) {
+        console.error("Failed to save to cinema:", err);
+      }
     },
     onError: (error) => {
       console.error("Failed to generate insight:", error);
@@ -64,6 +111,7 @@ export default function Home() {
   const handleStart = () => setState("confessional");
 
   const handleConfession = (input: string) => {
+    setLastConfession(input);
     setState("processing");
     // Call the backend API with Gemini integration
     generateInsight.mutate({
@@ -73,15 +121,15 @@ export default function Home() {
       role: "Executive", // Could be extracted from input via AI in future
       industry: "General", // Could be extracted
       rawInput: input, // Pass the raw confession
-    } as any); // Type assertion needed until client-side types fully update
+    });
   };
 
   return (
-    <div className="min-h-[100dvh] overflow-x-hidden relative selection:bg-cyan-500/30">
+    <div className="min-h-[100dvh] overflow-x-hidden relative selection:bg-emerald-200/30">
       {/* Immersive Background Layer */}
       <BackgroundLayer
         type="gradient"
-        fallbackGradient="from-slate-950 via-slate-900 to-slate-950"
+        fallbackGradient="from-[#0B0D12] via-[#0F1320] to-[#0B0D12]"
       />
 
       {/* HUD Overlay */}
@@ -92,6 +140,19 @@ export default function Home() {
 
       {/* Main Content */}
       <div className={`relative z-20 container max-w-5xl mx-auto px-4 sm:px-6 min-h-[100dvh] flex flex-col justify-center py-20 sm:py-0 ${state === 'immersive' ? 'h-auto py-0' : ''}`}>
+        
+        {/* Cinema Link (Top Right) */}
+        {state === 'intro' && (
+          <div className="absolute top-24 right-6 z-50">
+            <Link href="/cinema">
+              <Button variant="ghost" size="sm" className="text-slate-300 hover:text-white hover:bg-white/5 font-mono text-xs tracking-[0.3em] uppercase">
+                <Film className="w-4 h-4 mr-2 text-emerald-200" />
+                Cinema Archives
+              </Button>
+            </Link>
+          </div>
+        )}
+
         <AnimatePresence mode="wait">
           {/* STATE 1: INTRO */}
           {state === "intro" && (
@@ -105,10 +166,10 @@ export default function Home() {
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2, duration: motionTokens.duration.md }}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-sm bg-slate-900/60 backdrop-blur-md border border-cyan-500/20 text-cyan-400 text-[10px] font-mono tracking-[0.3em] uppercase shadow-[0_0_20px_rgba(6,182,212,0.15)]"
+                className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-white/5 backdrop-blur-md border border-white/10 text-emerald-200 text-[10px] font-mono tracking-[0.35em] uppercase shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
               >
-                <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                System Online
+                <span className="w-2 h-2 bg-emerald-300 rounded-full animate-pulse" />
+                Signal Engine Live
               </motion.div>
 
               {/* Hero Title with Decoding Effect */}
@@ -116,10 +177,12 @@ export default function Home() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.4, duration: motionTokens.duration.lg }}
-                className="font-display font-bold text-4xl sm:text-6xl md:text-8xl lg:text-9xl tracking-tighter leading-none text-white drop-shadow-[0_0_30px_rgba(6,182,212,0.5)]"
+                className="font-display font-semibold text-4xl sm:text-6xl md:text-7xl lg:text-8xl tracking-tight leading-none text-white"
               >
-                <DecodingText text="THIRD SIGNAL" delay={600} />{" "}
-                <span className="text-primary font-light block sm:inline">
+                <span className="bg-gradient-to-r from-white via-slate-200 to-emerald-200 bg-clip-text text-transparent">
+                  <DecodingText text="THIRD SIGNAL" delay={600} />
+                </span>{" "}
+                <span className="text-emerald-200 font-normal block sm:inline">
                   <DecodingText text="LABS" delay={1200} />
                 </span>
               </motion.h1>
@@ -131,11 +194,11 @@ export default function Home() {
                 transition={{ delay: 1.8, duration: motionTokens.duration.lg }}
                 className="flex items-center justify-center gap-4"
               >
-                <div className="h-px w-8 sm:w-16 bg-cyan-500/40" />
-                <p className="text-sm sm:text-lg md:text-xl font-light font-sans tracking-[0.25em] text-slate-300 uppercase">
-                  Operational
+                <div className="h-px w-10 sm:w-20 bg-white/15" />
+                <p className="text-xs sm:text-sm md:text-base font-medium font-mono tracking-[0.5em] text-slate-300 uppercase">
+                  Precision Signal
                 </p>
-                <div className="h-px w-8 sm:w-16 bg-cyan-500/40" />
+                <div className="h-px w-10 sm:w-20 bg-white/15" />
               </motion.div>
 
               {/* Subtitle */}
@@ -143,12 +206,12 @@ export default function Home() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 2.2, duration: motionTokens.duration.md }}
-                className="text-lg sm:text-xl md:text-2xl text-slate-400 max-w-3xl mx-auto leading-relaxed font-light px-4"
+                className="text-base sm:text-lg md:text-xl text-slate-300 max-w-2xl mx-auto leading-relaxed font-light px-4"
               >
-                Most enterprises are drowning in noise.
+                Replace reactive firefighting with deliberate signal design.
                 <br />
                 <span className="text-white font-medium">
-                  Let's find your signal.
+                  Build clarity your teams can execute.
                 </span>
               </motion.p>
 
@@ -161,18 +224,14 @@ export default function Home() {
                 <Button
                   size="lg"
                   onClick={handleStart}
-                  className="group relative h-14 sm:h-16 px-8 sm:px-10 text-sm sm:text-base font-bold font-mono tracking-widest uppercase bg-cyan-950/30 border-2 border-cyan-400 text-cyan-400 hover:bg-cyan-400/10 hover:shadow-[0_0_40px_rgba(6,182,212,0.4)] transition-all duration-300 overflow-hidden w-full sm:w-auto"
-                  style={{
-                    clipPath:
-                      "polygon(8% 0, 100% 0, 100% 70%, 92% 100%, 0 100%, 0 30%)",
-                  }}
+                  className="group relative h-14 sm:h-16 px-10 sm:px-12 text-xs sm:text-sm font-semibold font-mono tracking-[0.45em] uppercase bg-white/5 border border-white/15 text-white hover:bg-white/10 hover:shadow-[0_20px_60px_rgba(94,234,212,0.2)] transition-all duration-300 overflow-hidden w-full sm:w-auto rounded-full"
                 >
                   <span className="relative z-10 flex items-center justify-center gap-3">
-                    <Zap size={20} className="animate-pulse" />
-                    Initialize Analysis
+                    <Zap size={18} className="text-emerald-200" />
+                    Start Calibration
                     <ArrowRight size={18} />
                   </span>
-                  <div className="absolute inset-0 bg-cyan-400/5 translate-y-full transition-transform duration-200 group-hover:translate-y-0" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-emerald-200/10 via-transparent to-sky-200/10 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
                 </Button>
               </motion.div>
             </motion.div>
@@ -206,12 +265,17 @@ export default function Home() {
               key="immersive"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="absolute inset-0 w-full min-h-screen z-50 bg-black"
+              className="absolute inset-0 w-full min-h-screen z-50 bg-[#0B0D12]"
             >
               <ScrollyTelling 
                 storyboard={storyboardData.storyboard} 
                 finalCta={storyboardData.final_cta}
-                onRestart={() => setState("intro")} 
+                onRestart={() => {
+                  setLastConfession(null);
+                  setMovieSlug(null);
+                  setStoryboardData(null);
+                  setState("intro");
+                }} 
               />
             </motion.div>
           )}

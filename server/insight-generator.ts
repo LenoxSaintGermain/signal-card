@@ -1,5 +1,4 @@
 import { ENV } from "./_core/env";
-import { generateStoryboardVideos } from "./video-generator";
 
 interface InsightInput {
   signalId: string;
@@ -181,21 +180,6 @@ Make it feel like a high-end cinematic trailer for their future business success
         }
       ]
     };
-  }
-
-  // Generate videos for each scene in parallel (for both API and Fallback paths)
-  try {
-    console.log("[Insight Generator] Generating videos for storyboard scenes...");
-    const videoResults = await generateStoryboardVideos(insight.storyboard);
-
-    // Attach video URLs to scenes
-    insight.storyboard = insight.storyboard.map(scene => ({
-      ...scene,
-      video_url: videoResults.get(scene.id)?.video_url || undefined
-    }));
-  } catch (videoError) {
-    console.error("[Insight Generator] Video Generation Error:", videoError);
-    // Return insight with text-only if video gen completely fails
   }
 
   return insight;

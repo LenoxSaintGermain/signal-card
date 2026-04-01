@@ -38,20 +38,15 @@ class OAuthService {
     }
   }
 
-  private decodeState(state: string): string {
-    const redirectUri = atob(state);
-    return redirectUri;
-  }
-
   async getTokenByCode(
     code: string,
-    state: string
+    redirectUri: string
   ): Promise<ExchangeTokenResponse> {
     const payload: ExchangeTokenRequest = {
       clientId: ENV.appId,
       grantType: "authorization_code",
       code,
-      redirectUri: this.decodeState(state),
+      redirectUri,
     };
 
     const { data } = await this.client.post<ExchangeTokenResponse>(
@@ -116,13 +111,13 @@ class SDKServer {
   /**
    * Exchange OAuth authorization code for access token
    * @example
-   * const tokenResponse = await sdk.exchangeCodeForToken(code, state);
+   * const tokenResponse = await sdk.exchangeCodeForToken(code, redirectUri);
    */
   async exchangeCodeForToken(
     code: string,
-    state: string
+    redirectUri: string
   ): Promise<ExchangeTokenResponse> {
-    return this.oauthService.getTokenByCode(code, state);
+    return this.oauthService.getTokenByCode(code, redirectUri);
   }
 
   /**
@@ -156,6 +151,11 @@ class SDKServer {
 
   private getSessionSecret() {
     const secret = ENV.cookieSecret;
+    if (!secret) {
+      throw new Error(
+        "JWT secret missing: set JWT_SECRET environment variable before starting the server."
+      );
+    }
     return new TextEncoder().encode(secret);
   }
 
@@ -212,11 +212,7 @@ class SDKServer {
       });
       const { openId, appId, name } = payload as Record<string, unknown>;
 
-      if (
-        !isNonEmptyString(openId) ||
-        !isNonEmptyString(appId) ||
-        !isNonEmptyString(name)
-      ) {
+      if (!isNonEmptyString(openId) || !isNonEmptyString(appId)) {
         console.warn("[Auth] Session payload missing required fields");
         return null;
       }
@@ -224,7 +220,7 @@ class SDKServer {
       return {
         openId,
         appId,
-        name,
+        name: isNonEmptyString(name) ? name : "",
       };
     } catch (error) {
       console.warn("[Auth] Session verification failed", String(error));

@@ -1,0 +1,392 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://thirdsignal.ai/a2ui/catalogs/thirdsignal-void/v0.1/schema.json",
+  "title": "Third Signal Void Catalog",
+  "description": "A custom A2UI catalog for the Signal Card void experience. This schema is intentionally small, cinematic, and anti-dashboard.",
+  "type": "object",
+  "required": [
+    "catalogId",
+    "version",
+    "surfaceKinds",
+    "themeTokens",
+    "actions",
+    "components"
+  ],
+  "properties": {
+    "catalogId": {
+      "const": "https://thirdsignal.ai/a2ui/catalogs/thirdsignal-void/v0.1"
+    },
+    "version": {
+      "const": "0.1.0"
+    },
+    "surfaceKinds": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "thirdsignal.void",
+          "thirdsignal.apparition",
+          "thirdsignal.reveal"
+        ]
+      },
+      "minItems": 3,
+      "uniqueItems": true
+    },
+    "themeTokens": {
+      "type": "object",
+      "required": [
+        "background",
+        "phosphor",
+        "halo",
+        "warning",
+        "residue",
+        "apparition"
+      ],
+      "properties": {
+        "background": {
+          "type": "string",
+          "pattern": "^#?[0-9A-Fa-f]{6}$"
+        },
+        "phosphor": {
+          "type": "string",
+          "pattern": "^#?[0-9A-Fa-f]{6}$"
+        },
+        "halo": {
+          "type": "string",
+          "pattern": "^#?[0-9A-Fa-f]{6}$"
+        },
+        "warning": {
+          "type": "string",
+          "pattern": "^#?[0-9A-Fa-f]{6}$"
+        },
+        "residue": {
+          "type": "string",
+          "pattern": "^#?[0-9A-Fa-f]{6}$"
+        },
+        "apparition": {
+          "type": "string",
+          "pattern": "^#?[0-9A-Fa-f]{6}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "open_mic",
+          "stop_mic",
+          "switch_to_text",
+          "choose_route",
+          "dismiss_apparition",
+          "summon_reveal"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "components": {
+      "type": "object",
+      "required": [
+        "VoidStage",
+        "MarkCore",
+        "SignalHalo",
+        "WhisperText",
+        "ResidueTrail",
+        "HoldToSpeakGlyph",
+        "InterruptionHint",
+        "ApparitionImage",
+        "ChoiceSigil",
+        "RevealPortal"
+      ],
+      "properties": {
+        "VoidStage": {
+          "$ref": "#/$defs/componentDefinition"
+        },
+        "MarkCore": {
+          "$ref": "#/$defs/componentDefinition"
+        },
+        "SignalHalo": {
+          "$ref": "#/$defs/componentDefinition"
+        },
+        "WhisperText": {
+          "$ref": "#/$defs/componentDefinition"
+        },
+        "ResidueTrail": {
+          "$ref": "#/$defs/componentDefinition"
+        },
+        "HoldToSpeakGlyph": {
+          "$ref": "#/$defs/componentDefinition"
+        },
+        "InterruptionHint": {
+          "$ref": "#/$defs/componentDefinition"
+        },
+        "ApparitionImage": {
+          "$ref": "#/$defs/componentDefinition"
+        },
+        "ChoiceSigil": {
+          "$ref": "#/$defs/componentDefinition"
+        },
+        "RevealPortal": {
+          "$ref": "#/$defs/componentDefinition"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "componentDefinition": {
+      "type": "object",
+      "required": [
+        "description",
+        "props"
+      ],
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "props": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    "componentInstance": {
+      "type": "object",
+      "required": [
+        "id",
+        "component"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "component": {
+          "enum": [
+            "VoidStage",
+            "MarkCore",
+            "SignalHalo",
+            "WhisperText",
+            "ResidueTrail",
+            "HoldToSpeakGlyph",
+            "InterruptionHint",
+            "ApparitionImage",
+            "ChoiceSigil",
+            "RevealPortal"
+          ]
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "examples": [
+    {
+      "catalogId": "https://thirdsignal.ai/a2ui/catalogs/thirdsignal-void/v0.1",
+      "version": "0.1.0",
+      "surfaceKinds": [
+        "thirdsignal.void",
+        "thirdsignal.apparition",
+        "thirdsignal.reveal"
+      ],
+      "themeTokens": {
+        "background": "#020304",
+        "phosphor": "#B7F5FF",
+        "halo": "#56E0FF",
+        "warning": "#F6C78B",
+        "residue": "#7BA0B4",
+        "apparition": "#E8F2FF"
+      },
+      "actions": [
+        "open_mic",
+        "stop_mic",
+        "switch_to_text",
+        "choose_route",
+        "dismiss_apparition",
+        "summon_reveal"
+      ],
+      "components": {
+        "VoidStage": {
+          "description": "Full-screen black field with vignette, noise, and subtle drift.",
+          "props": {
+            "state": {
+              "enum": [
+                "idle",
+                "wake",
+                "listening",
+                "answering",
+                "reveal"
+              ]
+            },
+            "children": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "MarkCore": {
+          "description": "The only stable object in the interface.",
+          "props": {
+            "mode": {
+              "enum": [
+                "idle",
+                "wake",
+                "listen",
+                "answer",
+                "reveal"
+              ]
+            },
+            "audioReactive": {
+              "type": "boolean"
+            },
+            "size": {
+              "enum": [
+                "sm",
+                "md",
+                "lg"
+              ]
+            }
+          }
+        },
+        "SignalHalo": {
+          "description": "Voice and presence rings around the mark.",
+          "props": {
+            "intensity": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "pulseMode": {
+              "enum": [
+                "idle",
+                "listening",
+                "interrupt",
+                "answer"
+              ]
+            }
+          }
+        },
+        "WhisperText": {
+          "description": "Text that resolves out of darkness rather than appearing as a bubble.",
+          "props": {
+            "text": {
+              "type": "string"
+            },
+            "mode": {
+              "enum": [
+                "fragment",
+                "resolved",
+                "echo"
+              ]
+            },
+            "placement": {
+              "enum": [
+                "center",
+                "lower-third",
+                "orbit"
+              ]
+            }
+          }
+        },
+        "ResidueTrail": {
+          "description": "Decaying traces of prior utterances.",
+          "props": {
+            "itemsPath": {
+              "type": "string"
+            },
+            "maxVisible": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            },
+            "decayMs": {
+              "type": "integer",
+              "minimum": 250
+            }
+          }
+        },
+        "HoldToSpeakGlyph": {
+          "description": "Subtle mic affordance.",
+          "props": {
+            "label": {
+              "type": "string"
+            },
+            "action": {
+              "const": "open_mic"
+            }
+          }
+        },
+        "InterruptionHint": {
+          "description": "Minimal guidance when voice is blocked or unavailable.",
+          "props": {
+            "reason": {
+              "enum": [
+                "permission_denied",
+                "unsupported",
+                "connection_unstable"
+              ]
+            },
+            "text": {
+              "type": "string"
+            }
+          }
+        },
+        "ApparitionImage": {
+          "description": "Generated or retrieved image that blooms from the void.",
+          "props": {
+            "src": {
+              "type": "string"
+            },
+            "caption": {
+              "type": "string"
+            },
+            "treatment": {
+              "enum": [
+                "mist",
+                "plate",
+                "scan",
+                "memory"
+              ]
+            },
+            "generatorHint": {
+              "enum": [
+                "nano-banana",
+                "gemini",
+                "uploaded",
+                "unknown"
+              ]
+            }
+          }
+        },
+        "ChoiceSigil": {
+          "description": "Stylized route choice that should not read like a normal button.",
+          "props": {
+            "label": {
+              "type": "string"
+            },
+            "value": {
+              "type": "string"
+            },
+            "action": {
+              "const": "choose_route"
+            }
+          }
+        },
+        "RevealPortal": {
+          "description": "Transition point into the cinematic artifact.",
+          "props": {
+            "armed": {
+              "type": "boolean"
+            },
+            "title": {
+              "type": "string"
+            },
+            "action": {
+              "const": "summon_reveal"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

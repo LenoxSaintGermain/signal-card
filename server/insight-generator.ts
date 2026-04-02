@@ -1,3 +1,4 @@
+import { GoogleGenAI } from "@google/genai";
 import { ENV } from "./_core/env";
 
 interface InsightInput {
@@ -70,64 +71,34 @@ Return ONLY valid JSON in this exact structure:
 Make it feel like a high-end cinematic trailer for their future business success. Be bold.`;
 
   try {
-    const apiUrl = ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
-      ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`
-      : "https://forge.manus.im/v1/chat/completions";
-
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${ENV.forgeApiKey}`,
-      },
-      body: JSON.stringify({
-        model: "gemini-2.5-flash",
-        messages: [
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
-        response_format: {
-          type: "json_schema",
-          json_schema: {
-            name: "strategic_storyboard",
-            strict: true,
-            schema: {
-              type: "object",
-              properties: {
-                title: { type: "string" },
-                final_cta: { type: "string" },
-                storyboard: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      id: { type: "number" },
-                      visual_prompt: { type: "string" },
-                      text_overlay: { type: "string" },
-                      video_style: { type: "string", enum: ["cinematic", "glitch", "data-flow", "abstract-tech"] },
-                      mood: { type: "string", enum: ["dark", "bright", "urgent", "calm"] }
-                    },
-                    required: ["id", "visual_prompt", "text_overlay", "video_style", "mood"],
-                    additionalProperties: false
-                  }
-                }
-              },
-              required: ["title", "storyboard", "final_cta"],
-              additionalProperties: false,
-            },
-          },
-        },
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Gemini API error: ${response.status} ${response.statusText}`);
+    if (!ENV.geminiApiKey) {
+      throw new Error("GEMINI_API_KEY or GOOGLE_API_KEY is not configured");
     }
 
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
+    const ai = new GoogleGenAI({
+      apiKey: ENV.geminiApiKey,
+      apiVersion: "v1alpha",
+    });
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      config: {
+        responseMimeType: "application/json",
+        temperature: 0.9,
+      },
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: prompt,
+            },
+          ],
+        },
+      ],
+    });
+
+    const content = response.text;
 
     if (!content) {
       throw new Error("No content returned from Gemini API");

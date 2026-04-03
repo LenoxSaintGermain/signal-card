@@ -115,7 +115,8 @@ export function useThirdMarkLive({
   participantName?: string;
   sessionKey: number;
 }) {
-  const bootstrapSession = trpc.live.session.useMutation();
+  const bootstrapSessionMutation = trpc.live.session.useMutation();
+  const bootstrapSessionRef = useRef(bootstrapSessionMutation.mutateAsync);
 
   const sessionRef = useRef<Session | null>(null);
   const statusRef = useRef<ThirdMarkConnectionState>("idle");
@@ -146,6 +147,10 @@ export function useThirdMarkLive({
   useEffect(() => {
     voiceStateRef.current = voiceState;
   }, [voiceState]);
+
+  useEffect(() => {
+    bootstrapSessionRef.current = bootstrapSessionMutation.mutateAsync;
+  }, [bootstrapSessionMutation.mutateAsync]);
 
   useEffect(() => {
     const supported =
@@ -318,7 +323,7 @@ export function useThirdMarkLive({
 
     const connect = async () => {
       try {
-        const bootstrap = await bootstrapSession.mutateAsync({
+        const bootstrap = await bootstrapSessionRef.current({
           name: participantName?.trim() || undefined,
         });
 
@@ -473,7 +478,6 @@ export function useThirdMarkLive({
       modelDraftIdRef.current = null;
     };
   }, [
-    bootstrapSession,
     enabled,
     flushAudioPlayback,
     participantName,

@@ -5,6 +5,7 @@ import {
   type ThirdSignalVoidAction,
   type ThirdSignalVoidSurface,
 } from "@/components/third-mark/ThirdSignalVoidRenderer";
+import { CinematicWordReveal } from "@/components/third-mark/CinematicWordReveal";
 import { ScrollyTelling } from "@/components/ScrollyTelling";
 import {
   type ThirdMarkConnectionState,
@@ -22,6 +23,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 type Stage = "arrive" | "live" | "processing" | "immersive";
 
+const VOID_NOISE_URL =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E";
+const CINEMATIC_EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
+
 function buildTranscript(messages: ThirdMarkMessage[]) {
   return messages
     .filter(message => message.role !== "guide")
@@ -29,7 +34,7 @@ function buildTranscript(messages: ThirdMarkMessage[]) {
     .join("\n");
 }
 
-function trimText(text: string, limit = 132) {
+function trimText(text: string, limit = 88) {
   const normalized = text.replace(/\s+/g, " ").trim();
   if (normalized.length <= limit) return normalized;
   return `${normalized.slice(0, limit - 1).trim()}...`;
@@ -302,6 +307,7 @@ export default function ThirdMarkHome() {
         mode: whisperMessage?.status === "streaming" ? "fragment" : whisperMessage ? "resolved" : "echo",
         placement: "lower-third",
         speaker: whisperMessage?.role ?? "guide",
+        messageId: whisperMessage?.id,
         streaming: whisperMessage?.status === "streaming",
         echo:
           lastUserMessage && lastUserMessage.id !== whisperMessage?.id
@@ -422,6 +428,22 @@ export default function ThirdMarkHome() {
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_50%_35%,rgba(54,130,180,0.22),transparent_18%),radial-gradient(circle_at_50%_60%,rgba(19,52,73,0.28),transparent_36%),linear-gradient(180deg,#020304_0%,#000000_42%,#020409_100%)]" />
       <motion.div
         aria-hidden
+        className="pointer-events-none fixed inset-0 opacity-[0.045] mix-blend-soft-light"
+        animate={{ opacity: [0.032, 0.05, 0.036] }}
+        transition={{ duration: 5.5, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
+        style={{ backgroundImage: `url("${VOID_NOISE_URL}")`, backgroundSize: "220px 220px" }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 opacity-[0.06] mix-blend-screen"
+        style={{
+          backgroundImage:
+            "linear-gradient(180deg, rgba(255,255,255,0.15) 0, rgba(255,255,255,0) 1px)",
+          backgroundSize: "100% 4px",
+        }}
+      />
+      <motion.div
+        aria-hidden
         className="pointer-events-none fixed inset-0 opacity-70"
         animate={{ opacity: [0.45, 0.68, 0.5] }}
         transition={{ duration: 7, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
@@ -438,10 +460,10 @@ export default function ThirdMarkHome() {
         {stage === "arrive" && (
           <motion.main
             key="arrive"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.65 }}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.4, ease: CINEMATIC_EASE }}
             className="relative flex min-h-[100dvh] items-center justify-center px-6 py-12"
           >
             <motion.div
@@ -467,13 +489,21 @@ export default function ThirdMarkHome() {
               <motion.div
                 initial={{ opacity: 0, scale: 0.94 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+                transition={{ duration: 0.9, ease: CINEMATIC_EASE }}
                 className="relative mb-10 flex h-56 w-56 items-center justify-center"
               >
                 <motion.div
                   className="absolute inset-0 rounded-full border border-[#7DE0FF]/14"
-                  animate={{ scale: [0.96, 1.06, 0.96], opacity: [0.26, 0.56, 0.26] }}
-                  transition={{ duration: 5.2, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
+                  animate={{
+                    scale: [0.94, 1.08, 0.94],
+                    opacity: [0.18, 0.56, 0.18],
+                    boxShadow: [
+                      "0 0 0 rgba(94,234,212,0)",
+                      "0 0 42px rgba(94,234,212,0.12)",
+                      "0 0 0 rgba(94,234,212,0)",
+                    ],
+                  }}
+                  transition={{ duration: 3.5, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
                 />
                 <motion.div
                   className="absolute inset-[10%] rounded-full border border-[#7DE0FF]/10"
@@ -483,31 +513,45 @@ export default function ThirdMarkHome() {
                 <ThirdMarkGlyph expression="arrive" size={168} />
               </motion.div>
 
-              <motion.p
+              <motion.div
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.18 }}
+                transition={{ delay: 0.18, ease: CINEMATIC_EASE }}
                 className="max-w-[46rem] text-4xl leading-[1.04] text-[#EAF9FF] sm:text-5xl md:text-6xl"
                 style={{ fontFamily: '"Cormorant Garamond", serif' }}
               >
-                Do not expect a website. Expect an answer.
-              </motion.p>
+                <CinematicWordReveal
+                  text="Do not expect a website. Expect an answer."
+                  className="text-balance"
+                  wordClassName="mr-[0.22em] inline-block align-baseline"
+                  initialDelay={0.12}
+                  stagger={0.08}
+                  duration={0.26}
+                  blur={6}
+                />
+              </motion.div>
 
-              <motion.p
+              <motion.div
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 0.72, y: 0 }}
-                transition={{ delay: 0.28 }}
+                transition={{ delay: 0.28, ease: CINEMATIC_EASE }}
                 className="mt-6 max-w-2xl text-base leading-8 text-[#C7DCEB] sm:text-lg"
               >
-                Signal Card stays quiet until you give it something real. Speak if
-                the room allows it. Type only if you must. Everything else should
-                emerge from the dark.
-              </motion.p>
+                <CinematicWordReveal
+                  text="Signal Card stays quiet until you give it something real. Speak if the room allows it. Type only if you must. Everything else should emerge from the dark."
+                  className="text-balance"
+                  wordClassName="mr-[0.24em] inline-block align-baseline"
+                  initialDelay={0.34}
+                  stagger={0.028}
+                  duration={0.22}
+                  blur={4}
+                />
+              </motion.div>
 
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
+                transition={{ delay: 0.46, ease: CINEMATIC_EASE }}
                 className="mt-12 flex w-full max-w-xl flex-col items-center gap-4"
               >
                 <label className="w-full text-left text-[11px] uppercase tracking-[0.4em] text-[#9CC3D9]/48">
@@ -517,7 +561,7 @@ export default function ThirdMarkHome() {
                   value={draftName}
                   onChange={event => setDraftName(event.target.value)}
                   placeholder="Lenox"
-                  className="h-14 w-full rounded-full border border-white/10 bg-white/[0.03] px-6 text-center text-base text-[#EAF9FF] outline-none backdrop-blur-sm transition placeholder:text-[#92A8B7]/40 focus:border-[#7DE0FF]/40"
+                  className="h-14 w-full rounded-full border border-white/10 bg-white/[0.03] px-6 text-center text-base text-[#EAF9FF] outline-none backdrop-blur-sm transition placeholder:text-[#92A8B7]/40 focus:border-[#7DE0FF]/40 focus:shadow-[0_0_0_1px_rgba(94,234,212,0.3),0_0_28px_rgba(94,234,212,0.08)]"
                 />
                 <button
                   type="button"
@@ -535,13 +579,13 @@ export default function ThirdMarkHome() {
         {stage === "live" && (
           <motion.main
             key="live"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.5 }}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.5, delay: 0.2, ease: CINEMATIC_EASE }}
             className="relative min-h-[100dvh]"
           >
-            <div className="pointer-events-none absolute left-6 top-6 z-20 max-w-sm px-1">
+            <div className="pointer-events-none absolute left-6 top-6 z-20 max-w-[min(72vw,24rem)] px-1">
               <p className="text-[10px] uppercase tracking-[0.5em] text-[#87CFE8]/64">
                 Signal Card / Private Line
               </p>
@@ -601,7 +645,7 @@ export default function ThirdMarkHome() {
                         }
                       }}
                       placeholder="Type into the dark."
-                      className="min-h-[116px] w-full resize-none rounded-[1.4rem] border border-white/8 bg-black/24 px-5 py-4 text-base leading-7 text-[#EAF9FF] outline-none transition placeholder:text-[#88A6B8]/32 focus:border-[#7DE0FF]/26"
+                      className="min-h-[116px] w-full resize-none rounded-[1.4rem] border border-white/8 bg-black/24 px-5 py-4 text-base leading-7 text-[#EAF9FF] outline-none transition placeholder:text-[#88A6B8]/32 focus:border-[#7DE0FF]/26 focus:shadow-[0_0_0_1px_rgba(94,234,212,0.3),0_0_24px_rgba(94,234,212,0.08)]"
                     />
                     <div className="mt-4 flex items-center justify-between gap-4">
                       <p className="text-sm text-[#8EADC0]/54">

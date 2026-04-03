@@ -103,6 +103,7 @@ export default function ThirdMarkHome() {
     status,
     error,
     sendMessage,
+    primeAudioOutput,
     startVoiceCapture,
     stopVoiceCapture,
     voiceState,
@@ -209,12 +210,14 @@ export default function ThirdMarkHome() {
   }, [messages, whisperMessage?.id]);
 
   const handleBegin = () => {
+    void primeAudioOutput();
     setParticipantName(draftName.trim());
     setStage("live");
   };
 
   const handleSend = () => {
     if (!composerValue.trim()) return;
+    void primeAudioOutput();
     const sent = sendMessage(composerValue);
     if (sent) {
       setComposerValue("");
@@ -222,6 +225,7 @@ export default function ThirdMarkHome() {
   };
 
   const handleStarterPrompt = (prompt: string) => {
+    void primeAudioOutput();
     const sent = sendMessage(prompt);
     if (!sent) {
       setComposerValue(prompt);
@@ -259,6 +263,7 @@ export default function ThirdMarkHome() {
   };
 
   const handleVoiceToggle = () => {
+    void primeAudioOutput();
     if (voiceState === "recording") {
       void stopVoiceCapture();
       return;

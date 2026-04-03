@@ -238,6 +238,10 @@ export function ThirdSignalVoidRenderer({
       : pulseMode === "error"
         ? "rgba(246, 199, 139, 0.16)"
         : "rgba(94, 234, 212, 0.18)";
+  const isGuideWhisper = whisper?.speaker === "guide";
+  const whisperCopyClass = isGuideWhisper
+    ? "text-[clamp(1.55rem,6vw,3rem)] leading-[1.08] sm:text-[clamp(1.85rem,4.6vw,3.8rem)]"
+    : "text-[clamp(1.9rem,7.1vw,4.7rem)] leading-[1.06] sm:text-[clamp(2.35rem,5vw,4.9rem)]";
 
   return (
     <div className="relative flex min-h-[100dvh] flex-col">
@@ -387,7 +391,7 @@ export function ThirdSignalVoidRenderer({
           {halo && (
             <motion.div
               aria-hidden
-              className="absolute left-1/2 top-[38%] aspect-square w-[min(70vw,26rem)] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#7DE0FF]/14 sm:top-[40%] md:top-[42%] md:w-[min(54vw,29rem)]"
+              className="absolute left-1/2 top-[34%] aspect-square w-[min(62vw,18rem)] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#7DE0FF]/14 sm:top-[39%] sm:w-[min(70vw,24rem)] md:top-[42%] md:w-[min(54vw,29rem)]"
               animate={{
                 scale:
                   halo.pulseMode === "listening"
@@ -431,7 +435,7 @@ export function ThirdSignalVoidRenderer({
 
           {mark && (
             <motion.div
-              className="relative z-10 flex aspect-square w-[min(58vw,18rem)] items-center justify-center sm:w-[min(48vw,20rem)] md:w-[min(38vw,23rem)] lg:w-[min(34vw,26rem)]"
+              className="relative z-10 flex aspect-square w-[min(46vw,13rem)] items-center justify-center sm:w-[min(48vw,20rem)] md:w-[min(38vw,23rem)] lg:w-[min(34vw,26rem)]"
               animate={{ scale: stage.state === "answering" ? 1.015 : 1, y: stage.state === "wake" ? -4 : 0 }}
               transition={{ duration: 0.8, ease: "easeInOut" }}
             >
@@ -466,8 +470,8 @@ export function ThirdSignalVoidRenderer({
           )}
 
           {whisper && (
-            <div className="absolute inset-x-0 bottom-[20vh] z-20 px-5 sm:bottom-[21vh] sm:px-6 md:bottom-[22vh]">
-              <div className="mx-auto max-w-[min(90vw,44rem)] text-center">
+            <div className="absolute inset-x-0 bottom-[26vh] z-20 px-5 sm:bottom-[21vh] sm:px-6 md:bottom-[22vh]">
+              <div className="mx-auto max-w-[min(88vw,42rem)] text-center">
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={whisper.messageId ?? whisper.text}
@@ -478,7 +482,7 @@ export function ThirdSignalVoidRenderer({
                     className="relative rounded-[2rem] px-3 py-5"
                   >
                     <div className="pointer-events-none absolute inset-0 rounded-[2rem] bg-[radial-gradient(circle_at_50%_15%,rgba(20,41,56,0.3),rgba(1,2,4,0)_68%)]" />
-                    <p className="relative mb-4 text-[10px] uppercase tracking-[0.5em] text-[#86CDE5]/56">
+                    <p className="relative mb-3 text-[9px] uppercase tracking-[0.45em] text-[#86CDE5]/56 sm:mb-4 sm:text-[10px] sm:tracking-[0.5em]">
                       {whisper.speaker === "user"
                         ? "What you said"
                         : whisper.speaker === "guide"
@@ -486,7 +490,7 @@ export function ThirdSignalVoidRenderer({
                           : "Signal Card"}
                     </p>
                     <div
-                      className="relative pointer-events-auto mx-auto max-h-[26vh] overflow-y-auto px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:max-h-[30vh] md:max-h-[34vh]"
+                      className="relative pointer-events-auto mx-auto max-h-[18vh] overflow-y-auto px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:max-h-[26vh] md:max-h-[34vh]"
                       style={{
                         maskImage:
                           "linear-gradient(to bottom, transparent 0%, black 10%, black 76%, transparent 100%)",
@@ -496,7 +500,7 @@ export function ThirdSignalVoidRenderer({
                     >
                       <CinematicWordReveal
                         text={whisper.text}
-                        className="text-pretty text-[clamp(1.9rem,7.1vw,4.7rem)] leading-[1.06] text-[#EAF9FF] sm:text-[clamp(2.35rem,5vw,4.9rem)]"
+                        className={`text-pretty text-[#EAF9FF] ${whisperCopyClass}`}
                         wordClassName="mr-[0.22em] inline-block align-baseline will-change-transform"
                         stagger={whisper.mode === "fragment" ? 0.028 : 0.045}
                         duration={0.2}
@@ -596,7 +600,7 @@ export function ThirdSignalVoidRenderer({
                     animate={{ opacity: 0.78, y: 0 }}
                     transition={{ delay: 0.18 + index * 0.08 }}
                     onClick={() => onAction(choice.action)}
-                    className="max-w-[16rem] rounded-full border border-white/8 bg-white/[0.025] px-4 py-2 text-[11px] tracking-[0.22em] text-[#9EC8DA]/76 transition hover:border-[#7DE0FF]/24 hover:text-[#EAF9FF]"
+                    className="max-w-[15rem] rounded-full border border-white/8 bg-white/[0.025] px-4 py-2 text-[10px] leading-4 tracking-[0.18em] text-[#9EC8DA]/76 transition hover:border-[#7DE0FF]/24 hover:text-[#EAF9FF] sm:max-w-[16rem] sm:text-[11px] sm:tracking-[0.22em]"
                   >
                     {choice.label}
                   </motion.button>

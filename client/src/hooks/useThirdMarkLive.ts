@@ -224,6 +224,25 @@ export function useThirdMarkLive({
     }
   }, []);
 
+  const primeAudioOutput = useCallback(async () => {
+    const AudioContextCtor = getAudioContextCtor();
+    if (!AudioContextCtor) return false;
+
+    const audioContext =
+      outputAudioContextRef.current ?? new AudioContextCtor();
+    outputAudioContextRef.current = audioContext;
+
+    if (audioContext.state === "suspended") {
+      try {
+        await audioContext.resume();
+      } catch {
+        return false;
+      }
+    }
+
+    return audioContext.state === "running";
+  }, []);
+
   const stopVoiceCapture = useCallback(
     async (options?: { suppressStatusUpdate?: boolean }) => {
       const wasRecording = voiceStateRef.current === "recording";
@@ -244,9 +263,13 @@ export function useThirdMarkLive({
       mediaStreamRef.current = null;
 
       if (sessionRef.current && wasRecording) {
-        sessionRef.current.sendRealtimeInput({
-          audioStreamEnd: true,
-        });
+        try {
+          sessionRef.current.sendRealtimeInput({
+            audioStreamEnd: true,
+          });
+        } catch {
+          sessionRef.current = null;
+        }
       }
 
       if (inputAudioContextRef.current) {
@@ -267,15 +290,9 @@ export function useThirdMarkLive({
 
   const playOutputAudioChunk = useCallback(
     async (base64Audio: string, mimeType?: string) => {
-      const AudioContextCtor = getAudioContextCtor();
-      if (!AudioContextCtor) return;
-
-      const audioContext =
-        outputAudioContextRef.current ?? new AudioContextCtor();
-      outputAudioContextRef.current = audioContext;
-      if (audioContext.state === "suspended") {
-        await audioContext.resume();
-      }
+      const outputReady = await primeAudioOutput();
+      const audioContext = outputAudioContextRef.current;
+      if (!outputReady || !audioContext) return;
 
       const pcmBuffer = base64ToArrayBuffer(base64Audio);
       const float32 = pcm16ToFloat32(pcmBuffer);
@@ -299,7 +316,7 @@ export function useThirdMarkLive({
         source.disconnect();
       };
     },
-    []
+    [primeAudioOutput]
   );
 
   useEffect(() => {
@@ -435,11 +452,15 @@ export function useThirdMarkLive({
             },
             onerror: event => {
               console.error("[ThirdMarkLive] socket error", event.error);
+              sessionRef.current = null;
+              void stopVoiceCapture({ suppressStatusUpdate: true });
               setError("The line broke for a moment. Start the session again.");
               setStatus("error");
             },
             onclose: () => {
+              sessionRef.current = null;
               flushAudioPlayback();
+              void stopVoiceCapture({ suppressStatusUpdate: true });
               if (!cancelled && statusRef.current !== "error") {
                 setStatus("idle");
               }
@@ -521,6 +542,7 @@ export function useThirdMarkLive({
       flushAudioPlayback();
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      await primeAudioOutput();
       const AudioContextCtor = getAudioContextCtor();
       if (!AudioContextCtor) {
         setVoiceState("unsupported");
@@ -540,16 +562,22 @@ export function useThirdMarkLive({
       gain.connect(inputContext.destination);
 
       processor.onaudioprocess = event => {
-        if (!sessionRef.current) return;
+        const activeSession = sessionRef.current;
+        if (!activeSession) return;
         const input = event.inputBuffer.getChannelData(0);
         const pcm16 = float32To16BitPCM(input);
         const audioData = arrayBufferToBase64(pcm16.buffer);
-        sessionRef.current.sendRealtimeInput({
-          audio: {
-            data: audioData,
-            mimeType: `audio/pcm;rate=${Math.round(inputContext.sampleRate)}`,
-          } as Parameters<Session["sendRealtimeInput"]>[0]["audio"],
-        });
+        try {
+          activeSession.sendRealtimeInput({
+            audio: {
+              data: audioData,
+              mimeType: `audio/pcm;rate=${Math.round(inputContext.sampleRate)}`,
+            } as Parameters<Session["sendRealtimeInput"]>[0]["audio"],
+          });
+        } catch {
+          sessionRef.current = null;
+          void stopVoiceCapture({ suppressStatusUpdate: true });
+        }
       };
 
       inputAudioContextRef.current = inputContext;
@@ -569,7 +597,7 @@ export function useThirdMarkLive({
       setStatus("connected");
       return false;
     }
-  }, [flushAudioPlayback]);
+  }, [flushAudioPlayback, primeAudioOutput, stopVoiceCapture]);
 
   const userTurns = useMemo(
     () => messages.filter(message => message.role === "user").length,
@@ -581,6 +609,7 @@ export function useThirdMarkLive({
     status,
     error,
     sendMessage,
+    primeAudioOutput,
     startVoiceCapture,
     stopVoiceCapture,
     voiceState,

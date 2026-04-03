@@ -338,7 +338,7 @@ export function ThirdSignalVoidRenderer({
           )}
         </AnimatePresence>
 
-        <div className="relative flex flex-1 items-center justify-center overflow-hidden px-6 pb-36 pt-24 sm:pb-40 md:pb-44">
+        <div className="relative flex flex-1 overflow-hidden px-6 pb-12 pt-24 sm:pb-14 md:pb-24">
           {apparition && (
             <motion.div
               initial={{ opacity: 0, scale: 0.96, filter: "blur(24px)" }}
@@ -387,91 +387,98 @@ export function ThirdSignalVoidRenderer({
               )}
             </motion.div>
           )}
-
-          {halo && (
-            <motion.div
-              aria-hidden
-              className="absolute left-1/2 top-[34%] aspect-square w-[min(62vw,18rem)] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#7DE0FF]/14 sm:top-[39%] sm:w-[min(70vw,24rem)] md:top-[42%] md:w-[min(54vw,29rem)]"
-              animate={{
-                scale:
-                  halo.pulseMode === "listening"
-                    ? [0.96, 1.1, 0.96]
-                    : halo.pulseMode === "answer"
-                      ? [0.98, 1.06, 0.98]
-                      : halo.pulseMode === "reveal"
-                        ? [1, 1.1, 1]
-                        : [1, 1.04, 1],
-                opacity: [
-                  0.18 + clamp01(halo.intensity) * 0.12,
-                  0.34 + clamp01(halo.intensity) * 0.34,
-                  0.18 + clamp01(halo.intensity) * 0.12,
-                ],
-                boxShadow: [
-                  `0 0 0 rgba(94,234,212,0)`,
-                  `0 0 48px ${pulseColor}`,
-                  `0 0 0 rgba(94,234,212,0)`,
-                ],
-              }}
-              transition={{
-                duration: pulseDuration(halo.pulseMode),
-                repeat: Number.POSITIVE_INFINITY,
-                ease: "easeInOut",
-              }}
-            >
-              <motion.div
-                className="absolute inset-[10%] rounded-full border border-[#56E0FF]/10"
-                animate={{
-                  scale: halo.pulseMode === "reveal" ? [0.98, 1.08, 0.98] : [1.02, 0.98, 1.02],
-                  opacity: [0.12, 0.34, 0.12],
-                }}
-                transition={{
-                  duration: Math.max(1.6, pulseDuration(halo.pulseMode) - 0.5),
-                  repeat: Number.POSITIVE_INFINITY,
-                  ease: "easeInOut",
-                }}
-              />
-            </motion.div>
-          )}
-
-          {mark && (
-            <motion.div
-              className="relative z-10 flex aspect-square w-[min(46vw,13rem)] items-center justify-center sm:w-[min(48vw,20rem)] md:w-[min(38vw,23rem)] lg:w-[min(34vw,26rem)]"
-              animate={{ scale: stage.state === "answering" ? 1.015 : 1, y: stage.state === "wake" ? -4 : 0 }}
-              transition={{ duration: 0.8, ease: "easeInOut" }}
-            >
-              <AnimatePresence mode="wait">
-                {pulseMode !== "idle" && (
+          <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center gap-6 sm:gap-8 md:gap-10">
+            <div className="relative flex min-h-[13rem] w-full items-center justify-center sm:min-h-[17rem] md:min-h-[21rem]">
+              {halo && (
+                <motion.div
+                  aria-hidden
+                  className="absolute inset-0 m-auto aspect-square w-[min(62vw,18rem)] rounded-full border border-[#7DE0FF]/14 sm:w-[min(70vw,24rem)] md:w-[min(54vw,29rem)]"
+                  animate={{
+                    scale:
+                      halo.pulseMode === "listening"
+                        ? [0.96, 1.1, 0.96]
+                        : halo.pulseMode === "answer"
+                          ? [0.98, 1.06, 0.98]
+                          : halo.pulseMode === "reveal"
+                            ? [1, 1.1, 1]
+                            : [1, 1.04, 1],
+                    opacity: [
+                      0.18 + clamp01(halo.intensity) * 0.12,
+                      0.34 + clamp01(halo.intensity) * 0.34,
+                      0.18 + clamp01(halo.intensity) * 0.12,
+                    ],
+                    boxShadow: [
+                      `0 0 0 rgba(94,234,212,0)`,
+                      `0 0 48px ${pulseColor}`,
+                      `0 0 0 rgba(94,234,212,0)`,
+                    ],
+                  }}
+                  transition={{
+                    duration: pulseDuration(halo.pulseMode),
+                    repeat: Number.POSITIVE_INFINITY,
+                    ease: "easeInOut",
+                  }}
+                >
                   <motion.div
-                    key={pulseMode}
-                    aria-hidden
-                    initial={{ opacity: 0.34, scale: 0.82 }}
-                    animate={{ opacity: 0, scale: 1.14 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.62, ease: "easeOut" }}
-                    className="absolute inset-[14%] rounded-full"
-                    style={{ boxShadow: `0 0 40px ${pulseColor}` }}
+                    className="absolute inset-[10%] rounded-full border border-[#56E0FF]/10"
+                    animate={{
+                      scale:
+                        halo.pulseMode === "reveal"
+                          ? [0.98, 1.08, 0.98]
+                          : [1.02, 0.98, 1.02],
+                      opacity: [0.12, 0.34, 0.12],
+                    }}
+                    transition={{
+                      duration: Math.max(1.6, pulseDuration(halo.pulseMode) - 0.5),
+                      repeat: Number.POSITIVE_INFINITY,
+                      ease: "easeInOut",
+                    }}
                   />
-                )}
-              </AnimatePresence>
-              <motion.div
-                className="absolute inset-[18%] rounded-full bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.06),transparent_66%)] opacity-70"
-                animate={{ opacity: [0.34, 0.76, 0.42], scale: [0.96, 1.05, 0.98] }}
-                transition={{
-                  duration: pulseDuration(pulseMode),
-                  repeat: Number.POSITIVE_INFINITY,
-                  ease: "easeInOut",
-                }}
-              />
-              <ThirdMarkGlyph
-                expression={toExpression(mark.mode)}
-                size={mark.size === "xl" ? 216 : mark.size === "lg" ? 184 : 152}
-              />
-            </motion.div>
-          )}
+                </motion.div>
+              )}
 
-          {whisper && (
-            <div className="absolute inset-x-0 bottom-[26vh] z-20 px-5 sm:bottom-[21vh] sm:px-6 md:bottom-[22vh]">
-              <div className="mx-auto max-w-[min(88vw,42rem)] text-center">
+              {mark && (
+                <motion.div
+                  className="relative z-10 flex aspect-square w-[min(46vw,13rem)] items-center justify-center sm:w-[min(48vw,20rem)] md:w-[min(38vw,23rem)] lg:w-[min(34vw,26rem)]"
+                  animate={{
+                    scale: stage.state === "answering" ? 1.015 : 1,
+                    y: stage.state === "wake" ? -4 : 0,
+                  }}
+                  transition={{ duration: 0.8, ease: "easeInOut" }}
+                >
+                  <AnimatePresence mode="wait">
+                    {pulseMode !== "idle" && (
+                      <motion.div
+                        key={pulseMode}
+                        aria-hidden
+                        initial={{ opacity: 0.34, scale: 0.82 }}
+                        animate={{ opacity: 0, scale: 1.14 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.62, ease: "easeOut" }}
+                        className="absolute inset-[14%] rounded-full"
+                        style={{ boxShadow: `0 0 40px ${pulseColor}` }}
+                      />
+                    )}
+                  </AnimatePresence>
+                  <motion.div
+                    className="absolute inset-[18%] rounded-full bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.06),transparent_66%)] opacity-70"
+                    animate={{ opacity: [0.34, 0.76, 0.42], scale: [0.96, 1.05, 0.98] }}
+                    transition={{
+                      duration: pulseDuration(pulseMode),
+                      repeat: Number.POSITIVE_INFINITY,
+                      ease: "easeInOut",
+                    }}
+                  />
+                  <ThirdMarkGlyph
+                    expression={toExpression(mark.mode)}
+                    size={mark.size === "xl" ? 216 : mark.size === "lg" ? 184 : 152}
+                  />
+                </motion.div>
+              )}
+            </div>
+
+            {whisper && (
+              <div className="w-full max-w-[min(88vw,42rem)] text-center">
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={whisper.messageId ?? whisper.text}
@@ -479,7 +486,7 @@ export function ThirdSignalVoidRenderer({
                     animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
                     exit={{ opacity: 0, y: -12, filter: "blur(10px)" }}
                     transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                    className="relative rounded-[2rem] px-3 py-5"
+                    className="relative rounded-[2rem] px-3 py-4 sm:py-5"
                   >
                     <div className="pointer-events-none absolute inset-0 rounded-[2rem] bg-[radial-gradient(circle_at_50%_15%,rgba(20,41,56,0.3),rgba(1,2,4,0)_68%)]" />
                     <p className="relative mb-3 text-[9px] uppercase tracking-[0.45em] text-[#86CDE5]/56 sm:mb-4 sm:text-[10px] sm:tracking-[0.5em]">
@@ -490,7 +497,7 @@ export function ThirdSignalVoidRenderer({
                           : "Signal Card"}
                     </p>
                     <div
-                      className="relative pointer-events-auto mx-auto max-h-[18vh] overflow-y-auto px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:max-h-[26vh] md:max-h-[34vh]"
+                      className="relative pointer-events-auto mx-auto max-h-[22vh] overflow-y-auto px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:max-h-[26vh] md:max-h-[34vh]"
                       style={{
                         maskImage:
                           "linear-gradient(to bottom, transparent 0%, black 10%, black 76%, transparent 100%)",
@@ -524,12 +531,10 @@ export function ThirdSignalVoidRenderer({
                   </motion.div>
                 </AnimatePresence>
               </div>
-            </div>
-          )}
-        </div>
+            )}
 
-        <div className="absolute inset-x-0 bottom-8 z-20 px-6 sm:bottom-10">
-          <div className="mx-auto flex max-w-5xl flex-col items-center gap-4">
+            <div className="w-full px-1">
+              <div className="mx-auto flex max-w-5xl flex-col items-center gap-4">
             {portal && (
               <motion.button
                 type="button"
@@ -607,6 +612,8 @@ export function ThirdSignalVoidRenderer({
                 ))}
               </div>
             )}
+              </div>
+            </div>
           </div>
         </div>
       </div>

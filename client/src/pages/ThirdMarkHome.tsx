@@ -96,7 +96,6 @@ export default function ThirdMarkHome() {
   const [movieSlug, setMovieSlug] = useState<string | null>(null);
   const [sessionKey, setSessionKey] = useState(0);
   const revealContextRef = useRef<{ transcript: string; messages: ThirdMarkMessage[] } | null>(null);
-  const voiceBootstrapAttemptedRef = useRef(false);
 
   const {
     messages,
@@ -132,20 +131,6 @@ export default function ThirdMarkHome() {
   const savedStoryboard =
     (savedMovie?.storyboard as { storyboard?: Array<{ video_url?: string }> } | undefined) ??
     undefined;
-
-  useEffect(() => {
-    if (stage !== "live") {
-      voiceBootstrapAttemptedRef.current = false;
-      return;
-    }
-
-    if (voiceBootstrapAttemptedRef.current) return;
-    if (status !== "connected") return;
-    if (voiceState !== "ready") return;
-
-    voiceBootstrapAttemptedRef.current = true;
-    void startVoiceCapture();
-  }, [stage, startVoiceCapture, status, voiceState]);
 
   useEffect(() => {
     if (voiceState === "unsupported" || voiceState === "denied") {
@@ -253,7 +238,6 @@ export default function ThirdMarkHome() {
 
   const handleRestart = () => {
     revealContextRef.current = null;
-    voiceBootstrapAttemptedRef.current = false;
     setMovieSlug(null);
     setStoryboardData(null);
     setComposerValue("");

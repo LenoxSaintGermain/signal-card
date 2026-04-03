@@ -527,9 +527,16 @@ export function useThirdMarkLive({
       ]);
 
       setStatus("replying");
-      sessionRef.current.sendRealtimeInput({
-        text: normalized,
-      });
+      try {
+        sessionRef.current.sendRealtimeInput({
+          text: normalized,
+        });
+      } catch {
+        sessionRef.current = null;
+        setError("The line closed before the message could land. Start it once more.");
+        setStatus("error");
+        return false;
+      }
       return true;
     },
     [flushAudioPlayback, stopVoiceCapture]

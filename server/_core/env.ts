@@ -10,6 +10,8 @@ export const ENV = {
   isProduction: process.env.NODE_ENV === "production",
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
+  swarmBackendUrl: process.env.SWARM_BACKEND_URL ?? "",
+  swarmRequestTimeoutMs: Number(process.env.SWARM_REQUEST_TIMEOUT_MS ?? 8_000),
 };
 
 function assertUrl(value: string, label: string) {
@@ -36,6 +38,10 @@ export function validateEnv() {
   assertUrl(ENV.oAuthServerUrl, "OAUTH_SERVER_URL");
   assertUrl(ENV.oAuthPortalUrl, "OAUTH_PORTAL_URL");
   assertUrl(ENV.appOrigin, "APP_ORIGIN");
+
+  if (ENV.swarmBackendUrl) {
+    assertUrl(ENV.swarmBackendUrl, "SWARM_BACKEND_URL");
+  }
 }
 
 export function assertRequiredEnv() {

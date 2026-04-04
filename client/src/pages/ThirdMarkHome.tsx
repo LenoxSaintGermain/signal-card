@@ -86,6 +86,7 @@ function getOrbState(
 export default function ThirdMarkHome() {
   const [stage, setStage] = useState<Stage>("arrive");
   const [flowState, setFlowState] = useState<FlowState>("onboarding");
+  const [visitorName, setVisitorName] = useState<string | undefined>();
   const [nameDraft, setNameDraft] = useState("");
   const [composerValue, setComposerValue] = useState("");
   const [showTextFallback, setShowTextFallback] = useState(false);
@@ -149,6 +150,7 @@ export default function ThirdMarkHome() {
   }, [stage, startVoiceCapture, status]);
 
   const saveToCinema = trpc.cinema.save.useMutation();
+  const reportConversation = trpc.live.report.useMutation();
   const generateInsight = trpc.insights.generate.useMutation({
     onSuccess: async data => {
       const revealContext = revealContextRef.current;
@@ -207,6 +209,7 @@ export default function ThirdMarkHome() {
     setMovieSlug(null);
     setStoryboardData(null);
     setFlowState("onboarding");
+    setVisitorName(undefined);
     setNameDraft("");
     setComposerValue("");
     setShowTextFallback(false);
@@ -226,6 +229,7 @@ export default function ThirdMarkHome() {
     setPromptState(null);
     setLocalLines([]);
     setTypingGhost(null);
+    setVisitorName(undefined);
     setNameDraft("");
     setComposerValue("");
     setStage("live");
@@ -258,6 +262,7 @@ export default function ThirdMarkHome() {
     const normalized = nameDraft.trim();
 
     if (normalized) {
+      setVisitorName(normalized);
       pushVisitorLine(normalized);
     }
 
@@ -376,10 +381,30 @@ export default function ThirdMarkHome() {
 
   const handleReveal = () => {
     const transcript = buildTranscript(transcriptMessages);
+    const reportMessages = transcriptMessages
+      .filter(message => message.role !== "guide")
+      .map(message => ({
+        role: message.role,
+        text: message.text,
+      }));
+
     revealContextRef.current = {
       transcript,
       messages: transcriptMessages,
     };
+
+    void reportConversation
+      .mutateAsync({
+        visitorName,
+        transcript,
+        messageCount: reportMessages.length,
+        userTurns,
+        revealSlug: movieSlug,
+        messages: reportMessages,
+      })
+      .catch(cause => {
+        console.warn("[ThirdMarkHome] failed to report conversation to Alfred", cause);
+      });
 
     setStage("processing");
     generateInsight.mutate({

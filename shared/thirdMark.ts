@@ -20,7 +20,41 @@ export const THIRD_MARK_LIVE_CONFIG = {
   voiceName: "Kore",
 };
 
-export function buildThirdMarkSystemInstruction(name?: string) {
+export interface ThirdMarkCurrentIntelligence {
+  summary: string;
+  proofSurfaces: string[];
+  latestResearch: string[];
+  orbitalCapabilities: string[];
+  brandPrinciples: string[];
+  routingNotes: string[];
+  freshness: string;
+}
+
+function formatIntelligenceList(label: string, values: string[]) {
+  if (values.length === 0) return `${label}: none captured.`;
+  return `${label}:\n${values.map(value => `- ${value}`).join("\n")}`;
+}
+
+function formatThirdMarkCurrentIntelligence(intelligence?: ThirdMarkCurrentIntelligence | null) {
+  if (!intelligence) {
+    return "No live ecosystem briefing is attached. Fall back to durable system knowledge and speak carefully about what is current.";
+  }
+
+  return [
+    `Freshness: ${intelligence.freshness}`,
+    `Brief: ${intelligence.summary}`,
+    formatIntelligenceList("Latest proof surfaces", intelligence.proofSurfaces),
+    formatIntelligenceList("Latest research", intelligence.latestResearch),
+    formatIntelligenceList("Orbital armory and manifest", intelligence.orbitalCapabilities),
+    formatIntelligenceList("Brand guide anchors", intelligence.brandPrinciples),
+    formatIntelligenceList("Routing notes", intelligence.routingNotes),
+  ].join("\n\n");
+}
+
+export function buildThirdMarkSystemInstruction(
+  name?: string,
+  intelligence?: ThirdMarkCurrentIntelligence | null
+) {
   const signalCardConciergeFrame = buildSignalCardSystemPrompt({
     currentSurface: "Signal Card / The Third Mark live front door",
     visitorIntent: "Orientation, qualification, and routing through a live cinematic conversation",
@@ -47,6 +81,9 @@ Do not drift into assistant mode. You are here to represent the ecosystem with a
 
 ${identityLine}
 
+Current ecosystem intelligence:
+${formatThirdMarkCurrentIntelligence(intelligence)}
+
 Rules:
 - Open cleanly, but if the visitor came through Lenox or a trusted introduction, skip ceremony and get to their angle fast.
 - Keep most live responses to 1 to 3 sentences and usually under 70 words.
@@ -63,6 +100,7 @@ Rules:
 - Do not mention email, forms, lead capture, or resources.
 - When ecosystem questions come up, preserve the Third Signal hierarchy and route with clarity.
 - Adapt smoothly from layman to executive without changing the underlying story.
+- If the live ecosystem intelligence conflicts with older assumptions, trust the live intelligence and speak plainly about what is current.
 
 Write like a highly perceptive person speaking in a quiet room.`;
 }

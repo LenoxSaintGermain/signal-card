@@ -6,6 +6,7 @@ import { publicProcedure, rateLimitedPublicProcedure, router } from "./_core/trp
 import { saveEmailCapture } from "./emailCaptures";
 import { generateInsight } from "./insight-generator";
 import { createThirdMarkLiveSession } from "./live-session";
+import { reportThirdMarkConversationToAlfred } from "./swarm";
 import { generateAndPersistStoryboardVideos } from "./video-generator";
 import { movies } from "../drizzle/schema";
 import { getDb } from "./db";
@@ -116,6 +117,28 @@ export const appRouter = router({
       )
       .mutation(async ({ input }) => {
         return await createThirdMarkLiveSession(input);
+      }),
+    report: rateLimitedPublicProcedure({ windowMs: 10 * 60 * 1000, max: 30, keyPrefix: "live-report" })
+      .input(
+        z.object({
+          visitorName: z.string().trim().max(80).optional(),
+          transcript: z.string().trim().min(1).max(20_000),
+          messageCount: z.number().int().min(0).max(200).optional(),
+          userTurns: z.number().int().min(0).max(100).optional(),
+          revealSlug: z.string().trim().max(120).nullable().optional(),
+          messages: z
+            .array(
+              z.object({
+                role: z.enum(["guide", "user", "model"]),
+                text: z.string().trim().min(1).max(4_000),
+              })
+            )
+            .max(80)
+            .optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        return await reportThirdMarkConversationToAlfred(input);
       }),
   }),
 });

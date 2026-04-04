@@ -7,6 +7,7 @@ import {
   buildThirdMarkSystemInstruction,
 } from "@shared/thirdMark";
 import { ENV } from "./_core/env";
+import { fetchSignalCardBriefing } from "./swarm";
 
 export interface ThirdMarkLiveSessionInput {
   name?: string;
@@ -34,7 +35,8 @@ export async function createThirdMarkLiveSession(
   input: ThirdMarkLiveSessionInput
 ): Promise<ThirdMarkLiveSessionBootstrap> {
   const ai = getGeminiClient();
-  const systemInstruction = buildThirdMarkSystemInstruction(input.name);
+  const briefing = await fetchSignalCardBriefing(input.name);
+  const systemInstruction = buildThirdMarkSystemInstruction(input.name, briefing);
   const now = Date.now();
 
   const token = await ai.authTokens.create({

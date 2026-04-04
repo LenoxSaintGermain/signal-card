@@ -92,3 +92,43 @@ export const movies = mysqlTable("movies", {
 
 export type Movie = typeof movies.$inferSelect;
 export type InsertMovie = typeof movies.$inferInsert;
+
+/**
+ * Signal Card conversation reports
+ * Stores structured summaries and transcripts for Alfred/admin follow-through.
+ */
+export const signalCardConversations = mysqlTable("signalCardConversations", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Stable report identifier for admin surfaces */
+  reportId: varchar("reportId", { length: 64 }).notNull().unique(),
+  /** Visitor name, if offered */
+  visitorName: varchar("visitorName", { length: 120 }),
+  /** Full transcript captured at reveal/report time */
+  transcript: text("transcript").notNull(),
+  /** Structured Swarm/Alfred summary */
+  summary: text("summary").notNull(),
+  /** Who this visitor appears to be */
+  audience: varchar("audience", { length: 40 }),
+  /** What they actually need */
+  opportunity: text("opportunity"),
+  /** Best concrete next move */
+  nextStep: text("nextStep"),
+  /** low | normal | high */
+  urgency: varchar("urgency", { length: 24 }),
+  /** Proof surfaces or artifacts to show next */
+  proofToShow: json("proofToShow"),
+  /** Reveal artifact slug if one was generated */
+  revealSlug: varchar("revealSlug", { length: 120 }),
+  /** Raw message count captured from the session */
+  messageCount: int("messageCount"),
+  /** Number of user turns observed */
+  userTurns: int("userTurns"),
+  /** Raw message payload for downstream admin review */
+  messages: json("messages"),
+  /** Whether Alfred owner notification accepted the payload */
+  notifiedOwner: int("notifiedOwner").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type SignalCardConversation = typeof signalCardConversations.$inferSelect;
+export type InsertSignalCardConversation = typeof signalCardConversations.$inferInsert;

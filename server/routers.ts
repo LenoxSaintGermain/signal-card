@@ -2,13 +2,13 @@ import { COOKIE_NAME } from "@shared/const";
 import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, rateLimitedPublicProcedure, router } from "./_core/trpc";
+import { adminProcedure, publicProcedure, rateLimitedPublicProcedure, router } from "./_core/trpc";
 import { saveEmailCapture } from "./emailCaptures";
 import { generateInsight } from "./insight-generator";
 import { createThirdMarkLiveSession } from "./live-session";
 import { reportThirdMarkConversationToAlfred } from "./swarm";
 import { generateAndPersistStoryboardVideos } from "./video-generator";
-import { movies } from "../drizzle/schema";
+import { movies, signalCardConversations } from "../drizzle/schema";
 import { getDb } from "./db";
 import { desc, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -140,6 +140,34 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         return await reportThirdMarkConversationToAlfred(input);
       }),
+    reports: router({
+      list: adminProcedure
+        .query(async () => {
+          const db = await getDb();
+          if (!db) return [];
+          return await db
+            .select()
+            .from(signalCardConversations)
+            .orderBy(desc(signalCardConversations.createdAt))
+            .limit(50);
+        }),
+      get: adminProcedure
+        .input(
+          z.object({
+            reportId: z.string().trim().min(1).max(64),
+          })
+        )
+        .query(async ({ input }) => {
+          const db = await getDb();
+          if (!db) return null;
+          const result = await db
+            .select()
+            .from(signalCardConversations)
+            .where(eq(signalCardConversations.reportId, input.reportId))
+            .limit(1);
+          return result[0] ?? null;
+        }),
+    }),
   }),
 });
 

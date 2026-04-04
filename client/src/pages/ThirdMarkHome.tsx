@@ -154,6 +154,13 @@ export default function ThirdMarkHome() {
   const generateInsight = trpc.insights.generate.useMutation({
     onSuccess: async data => {
       const revealContext = revealContextRef.current;
+      const reportMessages =
+        revealContext?.messages
+          ?.filter(message => message.role !== "guide")
+          .map(message => ({
+            role: message.role,
+            text: message.text,
+          })) ?? [];
       const payload = {
         ...data,
         raw_input: revealContext?.transcript ?? "",
@@ -172,6 +179,21 @@ export default function ThirdMarkHome() {
           industry: "General",
         });
         setMovieSlug(saveResult.slug);
+
+        if (revealContext?.transcript) {
+          void reportConversation
+            .mutateAsync({
+              visitorName,
+              transcript: revealContext.transcript,
+              messageCount: reportMessages.length,
+              userTurns,
+              revealSlug: saveResult.slug,
+              messages: reportMessages,
+            })
+            .catch(cause => {
+              console.warn("[ThirdMarkHome] failed to report conversation to Alfred", cause);
+            });
+        }
       } catch (cause) {
         console.error("[ThirdMarkHome] failed to save cinema asset", cause);
       }
@@ -381,30 +403,10 @@ export default function ThirdMarkHome() {
 
   const handleReveal = () => {
     const transcript = buildTranscript(transcriptMessages);
-    const reportMessages = transcriptMessages
-      .filter(message => message.role !== "guide")
-      .map(message => ({
-        role: message.role,
-        text: message.text,
-      }));
-
     revealContextRef.current = {
       transcript,
       messages: transcriptMessages,
     };
-
-    void reportConversation
-      .mutateAsync({
-        visitorName,
-        transcript,
-        messageCount: reportMessages.length,
-        userTurns,
-        revealSlug: movieSlug,
-        messages: reportMessages,
-      })
-      .catch(cause => {
-        console.warn("[ThirdMarkHome] failed to report conversation to Alfred", cause);
-      });
 
     setStage("processing");
     generateInsight.mutate({

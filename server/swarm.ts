@@ -1,6 +1,9 @@
 import type { ThirdMarkCurrentIntelligence } from "@shared/thirdMark";
+import { nanoid } from "nanoid";
 import { ENV } from "./_core/env";
 import { notifyOwner } from "./_core/notification";
+import { getDb } from "./db";
+import { signalCardConversations } from "../drizzle/schema";
 
 type SwarmChatResponse = {
   content?: string;
@@ -26,6 +29,13 @@ export interface ThirdMarkConversationReport {
   nextStep: string;
   urgency: string;
   proofToShow: string[];
+}
+
+export interface ThirdMarkConversationReportResult {
+  notified: boolean;
+  persisted: boolean;
+  reportId: string | null;
+  report: ThirdMarkConversationReport;
 }
 
 function getSwarmEndpoint(pathname: string) {
@@ -295,8 +305,42 @@ export async function reportThirdMarkConversationToAlfred(input: ThirdMarkConver
     }
   }
 
+  let persisted = false;
+  let reportId: string | null = null;
+  const db = await getDb();
+
+  if (!db) {
+    console.warn("[Signal Card] Database unavailable; skipping conversation persistence.");
+  } else {
+    try {
+      reportId = `sig-${nanoid(10)}`;
+      await db.insert(signalCardConversations).values({
+        reportId,
+        visitorName: input.visitorName?.trim() || null,
+        transcript: truncate(input.transcript, 20_000),
+        summary: report.summary,
+        audience: report.audience,
+        opportunity: report.opportunity,
+        nextStep: report.nextStep,
+        urgency: report.urgency,
+        proofToShow: report.proofToShow,
+        revealSlug: input.revealSlug?.trim() || null,
+        messageCount: input.messageCount ?? null,
+        userTurns: input.userTurns ?? null,
+        messages: input.messages ?? [],
+        notifiedOwner: notified ? 1 : 0,
+      });
+      persisted = true;
+    } catch (error) {
+      console.warn("[Signal Card] Failed to persist conversation report:", error);
+      reportId = null;
+    }
+  }
+
   return {
     notified,
+    persisted,
+    reportId,
     report,
   };
 }

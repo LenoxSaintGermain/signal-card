@@ -585,6 +585,16 @@ export function useThirdMarkLive({
       processor.onaudioprocess = event => {
         const activeSession = sessionRef.current;
         if (!activeSession) return;
+
+        // Keep turn-taking clean: only stream mic audio while the line is actively listening.
+        // This prevents keyboard taps and room noise from barging in while the model is answering.
+        if (
+          voiceStateRef.current !== "recording" ||
+          statusRef.current !== "listening"
+        ) {
+          return;
+        }
+
         const input = event.inputBuffer.getChannelData(0);
         const pcm16 = float32To16BitPCM(input);
         const audioData = arrayBufferToBase64(pcm16.buffer);

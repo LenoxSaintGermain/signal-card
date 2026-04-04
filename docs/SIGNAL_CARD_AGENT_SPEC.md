@@ -191,6 +191,18 @@ This means new Signal Card sessions should be able to distinguish:
 The current line should keep its existing prompt until the next session bootstrap.
 Updated settings are expected to apply to the next live line, not mutate an active conversation in place.
 
+## Runtime Dependencies
+
+The production Signal Card line depends on two runtime secrets.
+
+- **`GOOGLE_API_KEY`** powers Gemini Live session bootstrap and reveal generation. If it is missing, the live speech experience will fail even if the rest of the site renders.
+- **`SWARM_OPERATOR_API_KEY`** authorizes Signal Card to read the shared agent settings from Orbital/Swarm at session bootstrap.
+
+Operational rule:
+
+- live speech and shared prompt hydration must both be verified after any Cloud Run env or secret change,
+- a successful web deploy is not enough if those two runtime dependencies are absent.
+
 ## IA Recommendation
 
 Signal Card should support the following information architecture.

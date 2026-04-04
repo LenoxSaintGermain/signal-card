@@ -10,6 +10,23 @@ type SwarmChatResponse = {
   artifact?: unknown;
 };
 
+type SwarmCoordinationBriefingResponse = {
+  summary?: string;
+  proof_surfaces?: unknown;
+  latest_research?: unknown;
+  orbital_capabilities?: unknown;
+  brand_principles?: unknown;
+  routing_notes?: unknown;
+  freshness?: string;
+};
+
+type SwarmCoordinationReportResponse = {
+  ok?: boolean;
+  reportId?: string;
+  intelligenceId?: string;
+  storedAt?: number;
+};
+
 export interface ThirdMarkConversationReportInput {
   visitorName?: string;
   transcript: string;
@@ -59,7 +76,15 @@ function createTimeoutSignal(timeoutMs: number) {
 }
 
 async function callSwarmChat(prompt: string) {
-  const endpoint = getSwarmEndpoint("/api/chat");
+  return callSwarmJsonEndpoint<SwarmChatResponse>("/api/chat", {
+    text: prompt,
+    space_id: "signal-card",
+    sender_id: "signal-card",
+  });
+}
+
+async function callSwarmJsonEndpoint<T>(pathname: string, payload: Record<string, unknown>) {
+  const endpoint = getSwarmEndpoint(pathname);
   if (!endpoint) {
     return null;
   }
@@ -72,22 +97,16 @@ async function callSwarmChat(prompt: string) {
       headers: {
         "content-type": "application/json",
       },
-      body: JSON.stringify({
-        text: prompt,
-        space_id: "signal-card",
-        sender_id: "signal-card",
-      }),
+      body: JSON.stringify(payload),
       signal: timeout.signal,
     });
 
     if (!response.ok) {
       const detail = await response.text().catch(() => "");
-      throw new Error(
-        `[Swarm] /api/chat failed (${response.status} ${response.statusText})${detail ? `: ${detail}` : ""}`
-      );
+      throw new Error(`[Swarm] ${pathname} failed (${response.status} ${response.statusText})${detail ? `: ${detail}` : ""}`);
     }
 
-    const json = (await response.json()) as SwarmChatResponse;
+    const json = (await response.json()) as T;
     return json;
   } finally {
     timeout.clear();
@@ -245,14 +264,42 @@ export async function fetchSignalCardBriefing(visitorName?: string) {
   }
 
   try {
+    try {
+      const directBriefing = await callSwarmJsonEndpoint<SwarmCoordinationBriefingResponse>(
+        "/api/coordination/briefing",
+        {
+          source: "signal-card",
+          surface: "Signal Card",
+          visitor_name: visitorName?.trim() || null,
+          intent: "Orientation, qualification, and routing through a live cinematic conversation",
+        }
+      );
+
+      const directSummary = String(directBriefing?.summary ?? "").trim();
+      if (directSummary) {
+        return {
+          summary: directSummary,
+          proofSurfaces: normalizeStringArray(directBriefing?.proof_surfaces),
+          latestResearch: normalizeStringArray(directBriefing?.latest_research),
+          orbitalCapabilities: normalizeStringArray(directBriefing?.orbital_capabilities),
+          brandPrinciples: normalizeStringArray(directBriefing?.brand_principles),
+          routingNotes: normalizeStringArray(directBriefing?.routing_notes),
+          freshness: String(directBriefing?.freshness ?? "unknown").trim() || "unknown",
+        };
+      }
+    } catch (error) {
+      console.warn("[Swarm] Coordination briefing endpoint unavailable, falling back to chat:", error);
+    }
+
     const response = await callSwarmChat(buildBriefingPrompt(visitorName));
     const content = typeof response?.content === "string" ? response.content : "";
     const briefing = parseBriefing(content);
-    if (!briefing) {
-      console.warn("[Swarm] Unable to parse Signal Card briefing payload.");
-      return null;
+    if (briefing) {
+      return briefing;
     }
-    return briefing;
+
+    console.warn("[Swarm] Unable to parse Signal Card briefing payload.");
+    return null;
   } catch (error) {
     console.warn("[Swarm] Failed to fetch Signal Card briefing:", error);
     return null;
@@ -261,6 +308,8 @@ export async function fetchSignalCardBriefing(visitorName?: string) {
 
 export async function reportThirdMarkConversationToAlfred(input: ThirdMarkConversationReportInput) {
   let report = buildFallbackConversationReport(input);
+  let persisted = false;
+  let reportId: string | null = null;
 
   if (ENV.swarmBackendUrl) {
     try {
@@ -276,6 +325,41 @@ export async function reportThirdMarkConversationToAlfred(input: ThirdMarkConver
   }
 
   let notified = false;
+  if (ENV.swarmBackendUrl) {
+    try {
+      reportId = `sig-${nanoid(10)}`;
+      const coordination = await callSwarmJsonEndpoint<SwarmCoordinationReportResponse>(
+        "/api/coordination/report",
+        {
+          source: "signal-card",
+          surface: "Signal Card",
+          report_id: reportId,
+          title: "Signal Card conversation report",
+          visitor_name: input.visitorName?.trim() || null,
+          audience: report.audience,
+          opportunity: report.opportunity,
+          next_step: report.nextStep,
+          urgency: report.urgency,
+          summary: report.summary,
+          transcript: truncate(input.transcript, 12_000),
+          reveal_slug: input.revealSlug?.trim() || null,
+          proof_to_show: report.proofToShow,
+          message_count: input.messageCount ?? null,
+          user_turns: input.userTurns ?? null,
+          messages: input.messages ?? [],
+          tags: ["signal-card", "conversation", report.audience].filter(Boolean),
+        }
+      );
+
+      if (coordination?.ok) {
+        persisted = true;
+        reportId = coordination.reportId ?? reportId;
+      }
+    } catch (error) {
+      console.warn("[Signal Card] Failed to persist coordination report via Swarm:", error);
+    }
+  }
+
   const content = [
     `Visitor: ${input.visitorName?.trim() || "unknown"}`,
     `Audience: ${report.audience}`,
@@ -284,6 +368,7 @@ export async function reportThirdMarkConversationToAlfred(input: ThirdMarkConver
     `Urgency: ${report.urgency}`,
     report.proofToShow.length > 0 ? `Proof to show: ${report.proofToShow.join("; ")}` : null,
     input.revealSlug ? `Reveal slug: ${input.revealSlug}` : null,
+    reportId ? `Report id: ${reportId}` : null,
     "",
     "Summary:",
     report.summary,
@@ -294,28 +379,15 @@ export async function reportThirdMarkConversationToAlfred(input: ThirdMarkConver
     .filter(Boolean)
     .join("\n");
 
-  if (ENV.forgeApiUrl && ENV.forgeApiKey) {
-    try {
-      notified = await notifyOwner({
-        title: "Signal Card conversation reported to Alfred",
-        content,
-      });
-    } catch (error) {
-      console.warn("[Signal Card] Failed to notify Alfred about conversation:", error);
-    }
-  }
-
-  let persisted = false;
-  let reportId: string | null = null;
   const db = await getDb();
 
   if (!db) {
     console.warn("[Signal Card] Database unavailable; skipping conversation persistence.");
   } else {
     try {
-      reportId = `sig-${nanoid(10)}`;
+      const localReportId = reportId ?? `sig-${nanoid(10)}`;
       await db.insert(signalCardConversations).values({
-        reportId,
+        reportId: localReportId,
         visitorName: input.visitorName?.trim() || null,
         transcript: truncate(input.transcript, 20_000),
         summary: report.summary,
@@ -328,12 +400,23 @@ export async function reportThirdMarkConversationToAlfred(input: ThirdMarkConver
         messageCount: input.messageCount ?? null,
         userTurns: input.userTurns ?? null,
         messages: input.messages ?? [],
-        notifiedOwner: notified ? 1 : 0,
+        notifiedOwner: 0,
       });
       persisted = true;
+      reportId = localReportId;
     } catch (error) {
       console.warn("[Signal Card] Failed to persist conversation report:", error);
-      reportId = null;
+    }
+  }
+
+  if (!persisted && ENV.forgeApiUrl && ENV.forgeApiKey) {
+    try {
+      notified = await notifyOwner({
+        title: "Signal Card conversation reported to Alfred",
+        content,
+      });
+    } catch (error) {
+      console.warn("[Signal Card] Failed to notify Alfred about conversation:", error);
     }
   }
 

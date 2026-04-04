@@ -183,6 +183,12 @@ The live settings record should include:
 - alias lists that let the line resolve who is actually on the other end.
 
 Operator surfaces may also request an **AI-assisted draft** of the Signal Card settings before saving.
+
+The shared settings record now also carries the live voice layer for new sessions:
+- `voice_name` selects the Gemini prebuilt voice used by the line
+- `turn_taking_style` controls how quickly the line hands turns back and forth
+- recommended baseline: `voice_name=Kore`, `turn_taking_style=patient`
+- `patient` mode is intentionally half-duplex: the caller taps to speak, Signal Card answers, and the line rests instead of immediately re-opening the mic
 That draft is advisory only: the operator still reviews it, edits it if needed, and then saves the resulting record into Swarm / Orbital.
 
 This means new Signal Card sessions should be able to distinguish:

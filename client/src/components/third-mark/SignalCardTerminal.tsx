@@ -1,9 +1,10 @@
 import { ThirdMarkGlyph } from "@/components/third-mark/ThirdMarkGlyph";
 import { AnimatePresence, motion } from "framer-motion";
 import { RotateCcw } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
-export type SignalTerminalOrbState = "idle" | "speaking" | "listening" | "processing";
+export type SignalTerminalMarkState = "idle" | "speaking" | "listening" | "processing";
+export type SignalTerminalOrbState = SignalTerminalMarkState;
 
 export interface SignalTerminalEntry {
   id: string;
@@ -36,7 +37,9 @@ export type SignalTerminalPrompt =
       submitDisabled?: boolean;
     };
 
-const CONTAINER_EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
+const GOLD = "#C4A265";
+const GOLD_BRIGHT = "#E8D5A0";
+const CONTAINER_EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
 function useTypewriterText(
   messageId: string,
@@ -142,75 +145,78 @@ function useTypewriterText(
   };
 }
 
-function TerminalOrb({ state }: { state: SignalTerminalOrbState }) {
+function SignalMarkPresence({ state }: { state: SignalTerminalMarkState }) {
+  const isSpeaking = state === "speaking" || state === "processing";
   const isListening = state === "listening";
-  const isSpeaking = state === "speaking";
+  const expression = isListening
+    ? "listen"
+    : isSpeaking
+      ? state === "processing"
+        ? "gift"
+        : "speak"
+      : "rest";
 
   return (
-    <div className="relative mx-auto flex h-24 w-24 items-center justify-center sm:h-28 sm:w-28">
-      {isListening && (
-        <>
-          <motion.div
-            className="absolute inset-[-10px] rounded-full border"
-            style={{ borderColor: "rgba(125,224,255,0.3)" }}
-            animate={{ scale: [1, 1.46], opacity: [0.5, 0] }}
-            transition={{ duration: 1.6, repeat: Number.POSITIVE_INFINITY, ease: "easeOut" }}
-          />
-          <motion.div
-            className="absolute inset-[-10px] rounded-full border"
-            style={{ borderColor: "rgba(125,224,255,0.18)" }}
-            animate={{ scale: [1, 1.58], opacity: [0.36, 0] }}
-            transition={{ duration: 1.6, delay: 0.45, repeat: Number.POSITIVE_INFINITY, ease: "easeOut" }}
-          />
-        </>
-      )}
+    <div className="relative mx-auto flex h-24 w-28 items-center justify-center sm:h-28 sm:w-32">
+      <motion.div
+        aria-hidden
+        className="absolute inset-x-4 top-1/2 h-16 -translate-y-1/2"
+        animate={{
+          opacity: isListening ? [0.08, 0.18, 0.08] : isSpeaking ? [0.06, 0.16, 0.06] : [0.04, 0.12, 0.04],
+          filter: isListening
+            ? ["blur(18px)", "blur(28px)", "blur(18px)"]
+            : ["blur(16px)", "blur(24px)", "blur(16px)"],
+        }}
+        transition={{
+          duration: isListening ? 3 : isSpeaking ? 3.4 : 4.5,
+          repeat: Number.POSITIVE_INFINITY,
+          ease: "easeInOut",
+        }}
+        style={{
+          background:
+            "radial-gradient(ellipse at center, rgba(196,162,101,0.22) 0%, rgba(196,162,101,0.1) 26%, rgba(196,162,101,0.03) 48%, rgba(0,0,0,0) 78%)",
+        }}
+      />
 
       <motion.div
-        className="relative h-full w-full rounded-full border"
+        aria-hidden
+        className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2"
         style={{
-          borderColor: isListening ? "rgba(125,224,255,0.18)" : "rgba(212,178,125,0.14)",
-          background: isListening
-            ? "radial-gradient(circle at 40% 35%, rgba(125,224,255,0.16), rgba(5,14,18,0.94) 55%, rgba(0,0,0,1) 100%)"
-            : "radial-gradient(circle at 40% 35%, rgba(212,178,125,0.18), rgba(14,10,5,0.94) 55%, rgba(0,0,0,1) 100%)",
+          background: `linear-gradient(90deg, transparent 0%, rgba(196,162,101,0.1) 18%, rgba(232,213,160,0.5) 50%, rgba(196,162,101,0.1) 82%, transparent 100%)`,
         }}
-        animate={
-          state === "processing"
-            ? { scale: [1, 1.06, 1], opacity: [0.82, 1, 0.84] }
-            : isSpeaking
-              ? { scale: [1, 1.03, 1], opacity: [0.88, 1, 0.9] }
-              : { scale: [1, 1.015, 1], opacity: [0.84, 0.98, 0.86] }
-        }
+        animate={{
+          opacity: isSpeaking ? [0.22, 0.75, 0.22] : [0.12, 0.28, 0.12],
+          scaleX: isSpeaking ? [0.92, 1.06, 0.94] : [0.96, 1, 0.96],
+        }}
         transition={{
-          duration: isListening ? 1.3 : isSpeaking ? 1.6 : 3.2,
+          duration: isSpeaking ? 2.6 : 4.5,
+          repeat: Number.POSITIVE_INFINITY,
+          ease: "easeInOut",
+        }}
+      />
+
+      {isSpeaking ? (
+        <motion.div
+          aria-hidden
+          className="absolute inset-x-3 top-1/2 h-px -translate-y-1/2"
+          style={{ background: `linear-gradient(90deg, transparent, ${GOLD_BRIGHT}80, transparent)` }}
+          animate={{ opacity: [0, 0.9, 0], y: [-22, 0, 22] }}
+          transition={{ duration: 2.4, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
+        />
+      ) : null}
+
+      <motion.div
+        className="relative"
+        animate={{
+          opacity: isListening ? [0.7, 1, 0.7] : isSpeaking ? [0.76, 1, 0.78] : [0.58, 0.92, 0.58],
+        }}
+        transition={{
+          duration: isListening ? 3 : isSpeaking ? 3.4 : 4.5,
           repeat: Number.POSITIVE_INFINITY,
           ease: "easeInOut",
         }}
       >
-        {isSpeaking && (
-          <motion.div
-            className="absolute left-0 right-0 h-px"
-            style={{
-              background: "linear-gradient(90deg, transparent, rgba(212,178,125,0.55), transparent)",
-            }}
-            animate={{ top: ["8%", "86%"], opacity: [0, 1, 0] }}
-            transition={{ duration: 1.8, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
-          />
-        )}
-
-        <div className="absolute inset-0 flex items-center justify-center">
-          <ThirdMarkGlyph
-            expression={
-              isListening
-                ? "listen"
-                : isSpeaking
-                  ? "speak"
-                  : state === "processing"
-                    ? "gift"
-                    : "rest"
-            }
-            size={60}
-          />
-        </div>
+        <ThirdMarkGlyph expression={expression} size={76} />
       </motion.div>
     </div>
   );
@@ -239,26 +245,26 @@ function VoiceOption({
         animate={
           active
             ? {
-                scale: [1, 1.45, 1],
+                scale: [1, 1.24, 1],
                 opacity: [0.7, 1, 0.7],
                 boxShadow: [
                   "0 0 0 rgba(125,224,255,0)",
-                  "0 0 12px rgba(125,224,255,0.48)",
+                  "0 0 10px rgba(125,224,255,0.42)",
                   "0 0 0 rgba(125,224,255,0)",
                 ],
               }
             : {
-                scale: [1, 1.18, 1],
-                opacity: [0.5, 0.9, 0.5],
+                scale: [1, 1.12, 1],
+                opacity: [0.45, 0.88, 0.45],
                 boxShadow: [
                   "0 0 0 rgba(125,224,255,0)",
-                  "0 0 8px rgba(125,224,255,0.3)",
+                  "0 0 5px rgba(125,224,255,0.2)",
                   "0 0 0 rgba(125,224,255,0)",
                 ],
               }
         }
         transition={{
-          duration: active ? 0.9 : 1.8,
+          duration: active ? 1.1 : 2.2,
           repeat: Number.POSITIVE_INFINITY,
           ease: "easeInOut",
         }}
@@ -287,14 +293,15 @@ function GhostLine({
   }, [complete, entry.id, isStreaming, onDone]);
 
   return (
-    <div className="max-w-[85%] text-left">
-      <p className="font-mono text-[13px] leading-[1.7] tracking-[0.02em] text-white/84 sm:text-[14px]">
+    <div className="max-w-[74%] text-left sm:max-w-[70%]">
+      <p className="whitespace-pre-wrap font-mono text-[12px] leading-[1.82] tracking-[0.025em] text-[rgba(245,240,232,0.88)] sm:text-[13px]">
         {displayed}
         {(!complete || isStreaming) && (
           <motion.span
-            className="ml-0.5 inline-block h-[1em] w-[2px] align-[-0.12em] bg-[#d4b27d]"
+            className="ml-0.5 inline-block h-[1em] w-[2px] align-[-0.12em]"
+            style={{ background: GOLD_BRIGHT }}
             animate={{ opacity: [1, 0, 1] }}
-            transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
+            transition={{ duration: 1.08, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
           />
         )}
       </p>
@@ -304,9 +311,9 @@ function GhostLine({
 
 function VisitorLine({ entry }: { entry: SignalTerminalEntry }) {
   return (
-    <div className="ml-auto max-w-[78%] text-right">
+    <div className="ml-auto max-w-[68%] text-right sm:max-w-[64%]">
       <p
-        className="text-[1.02rem] leading-[1.55] text-white/46 sm:text-[1.08rem]"
+        className="whitespace-pre-wrap text-[0.98rem] leading-[1.72] text-white/36 sm:text-[1.02rem]"
         style={{ fontFamily: '"Cormorant Garamond", serif', fontStyle: "italic" }}
       >
         {entry.text}
@@ -315,13 +322,67 @@ function VisitorLine({ entry }: { entry: SignalTerminalEntry }) {
   );
 }
 
+function SignalGraphicBreak({ variant }: { variant: number }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12, filter: "blur(10px)" }}
+      animate={{ opacity: 0.92, y: 0, filter: "blur(0px)" }}
+      exit={{ opacity: 0, y: -8, filter: "blur(8px)" }}
+      transition={{ duration: 0.7, ease: CONTAINER_EASE }}
+      className="pointer-events-none relative mx-auto my-4 h-24 w-full max-w-[18rem] overflow-hidden"
+      aria-hidden
+    >
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(196,162,101,0.12)_0%,rgba(196,162,101,0.04)_32%,rgba(0,0,0,0)_72%)]" />
+      <div
+        className="absolute inset-0 opacity-[0.06]"
+        style={{
+          backgroundImage:
+            "linear-gradient(180deg, rgba(232,213,160,0.2) 0, rgba(255,255,255,0) 1px), linear-gradient(90deg, rgba(232,213,160,0.08) 0, rgba(255,255,255,0) 1px)",
+          backgroundSize: "100% 8px, 18px 100%",
+        }}
+      />
+      <motion.div
+        className="absolute inset-x-6 top-1/2 h-px -translate-y-1/2"
+        style={{ background: `linear-gradient(90deg, transparent, ${GOLD}66, transparent)` }}
+        animate={{ opacity: [0.2, 0.62, 0.2], scaleX: [0.9, 1.03, 0.92] }}
+        transition={{ duration: 4.8, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
+      />
+      {variant === 0 ? (
+        <svg className="absolute inset-0 h-full w-full" viewBox="0 0 320 96" fill="none">
+          <path d="M26 68L92 26H152L202 52H294" stroke="rgba(196,162,101,0.22)" strokeWidth="1" />
+          <path d="M44 78H126L164 38H240" stroke="rgba(232,213,160,0.18)" strokeWidth="1" />
+          <circle cx="92" cy="26" r="2" fill="rgba(232,213,160,0.58)" />
+          <circle cx="202" cy="52" r="2" fill="rgba(196,162,101,0.48)" />
+          <circle cx="164" cy="38" r="2" fill="rgba(232,213,160,0.44)" />
+        </svg>
+      ) : variant === 1 ? (
+        <svg className="absolute inset-0 h-full w-full" viewBox="0 0 320 96" fill="none">
+          <path d="M18 56C44 56 46 22 74 22C101 22 102 76 132 76C162 76 168 36 194 36C220 36 228 64 260 64C280 64 288 52 302 52" stroke="rgba(196,162,101,0.22)" strokeWidth="1" />
+          <path d="M26 68C54 68 54 42 82 42C110 42 110 60 136 60C162 60 174 22 202 22C230 22 238 76 270 76" stroke="rgba(232,213,160,0.16)" strokeWidth="1" />
+        </svg>
+      ) : (
+        <svg className="absolute inset-0 h-full w-full" viewBox="0 0 320 96" fill="none">
+          <path d="M42 24H276" stroke="rgba(196,162,101,0.12)" strokeWidth="1" />
+          <path d="M72 72H248" stroke="rgba(232,213,160,0.16)" strokeWidth="1" />
+          <path d="M98 24V72" stroke="rgba(196,162,101,0.18)" strokeWidth="1" />
+          <path d="M160 24V72" stroke="rgba(232,213,160,0.12)" strokeWidth="1" />
+          <path d="M222 24V72" stroke="rgba(196,162,101,0.18)" strokeWidth="1" />
+        </svg>
+      )}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <ThirdMarkGlyph expression={variant === 1 ? "think" : "certain"} size={44} />
+      </div>
+    </motion.div>
+  );
+}
+
 function PromptShell({ children }: { children: ReactNode }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 6, scale: 0.985, filter: "blur(8px)" }}
+      initial={{ opacity: 0, y: 6, scale: 0.992, filter: "blur(8px)" }}
       animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
-      exit={{ opacity: 0, y: -4, scale: 0.99, filter: "blur(8px)" }}
-      transition={{ duration: 0.48, ease: CONTAINER_EASE }}
+      exit={{ opacity: 0, y: -4, scale: 0.996, filter: "blur(8px)" }}
+      transition={{ duration: 0.52, ease: CONTAINER_EASE }}
       className="w-full"
     >
       {children}
@@ -361,14 +422,15 @@ function NamePrompt({
             }
           }}
           placeholder={placeholder}
-          className="h-12 w-full border-b border-white/10 bg-transparent px-0 text-[1.02rem] text-white/88 outline-none transition placeholder:text-white/16 focus:border-[#d4b27d]/42"
+          className="h-12 w-full border-b border-white/10 bg-transparent px-0 text-[1rem] text-[rgba(245,240,232,0.9)] outline-none transition placeholder:text-white/14 focus:border-[rgba(196,162,101,0.42)]"
           style={{ fontFamily: '"Cormorant Garamond", serif', fontStyle: "italic" }}
         />
         <div className="flex items-center justify-between gap-4">
           <button
             type="button"
             onClick={onSubmit}
-            className="text-[10px] uppercase tracking-[0.34em] text-[#d4b27d]/82 transition hover:text-[#f4dfbc]"
+            className="text-[10px] uppercase tracking-[0.34em] transition hover:text-[#f4dfbc]"
+            style={{ color: `${GOLD}D0` }}
           >
             {submitLabel}
           </button>
@@ -405,13 +467,13 @@ function ChoicePrompt({
             key={choice.id}
             type="button"
             onClick={() => onChoose(choice.id)}
-            className="flex w-full items-start justify-between gap-4 border-b border-white/8 py-3 text-left transition hover:border-[#d4b27d]/24"
+            className="flex w-full items-start justify-between gap-4 border-b border-white/8 py-3 text-left transition hover:border-[rgba(196,162,101,0.24)]"
           >
-            <span className="font-mono text-[12px] uppercase tracking-[0.22em] text-white/74">
+            <span className="font-mono text-[12px] uppercase tracking-[0.22em] text-white/72">
               {choice.label}
             </span>
             {choice.sub ? (
-              <span className="text-right text-[11px] text-white/28">{choice.sub}</span>
+              <span className="text-right text-[11px] text-white/26">{choice.sub}</span>
             ) : null}
           </button>
         ))}
@@ -463,7 +525,7 @@ function TextPrompt({
           }}
           rows={3}
           placeholder={placeholder}
-          className="min-h-[7.25rem] w-full resize-none border border-white/10 bg-white/[0.015] p-3 text-[1rem] leading-7 text-white/86 outline-none transition placeholder:text-white/18 focus:border-[#d4b27d]/34 focus:bg-white/[0.02]"
+          className="min-h-[7rem] w-full resize-none border-b border-white/10 bg-transparent px-0 py-2 text-[1rem] leading-7 text-[rgba(245,240,232,0.88)] outline-none transition placeholder:text-white/16 focus:border-[rgba(196,162,101,0.34)]"
           style={{ fontFamily: '"Cormorant Garamond", serif', fontStyle: "italic" }}
         />
         <div className="flex items-center justify-between gap-4">
@@ -471,7 +533,8 @@ function TextPrompt({
             type="button"
             onClick={onSubmit}
             disabled={submitDisabled}
-            className="text-[10px] uppercase tracking-[0.34em] text-[#d4b27d]/82 transition hover:text-[#f4dfbc] disabled:cursor-not-allowed disabled:opacity-40"
+            className="text-[10px] uppercase tracking-[0.34em] transition hover:text-[#f4dfbc] disabled:cursor-not-allowed disabled:opacity-40"
+            style={{ color: `${GOLD}D0` }}
           >
             {submitLabel}
           </button>
@@ -512,7 +575,7 @@ export function SignalCardTerminal({
   onReveal,
 }: {
   stage: "arrive" | "live";
-  orbState: SignalTerminalOrbState;
+  orbState: SignalTerminalMarkState;
   entries: SignalTerminalEntry[];
   typingGhost: SignalTerminalEntry | null;
   activePrompt: SignalTerminalPrompt | null;
@@ -535,30 +598,53 @@ export function SignalCardTerminal({
   onReveal: () => void;
 }) {
   const endRef = useRef<HTMLDivElement | null>(null);
+  const visibleEntries = useMemo(() => entries.slice(-5), [entries]);
+
+  const breakAfterIds = useMemo(() => {
+    const ids = new Map<string, number>();
+    let ghostCount = 0;
+
+    visibleEntries.forEach((entry, index) => {
+      if (entry.speaker !== "ghost") return;
+      ghostCount += 1;
+      if (ghostCount % 2 === 0 && index < visibleEntries.length - 1) {
+        ids.set(entry.id, ghostCount % 3);
+      }
+    });
+
+    return ids;
+  }, [visibleEntries]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({
       behavior: typingGhost ? "smooth" : "auto",
       block: "end",
     });
-  }, [activePrompt, entries.length, readyToReveal, textFallbackOpen, typingGhost?.id, typingGhost?.text]);
+  }, [activePrompt, readyToReveal, textFallbackOpen, typingGhost?.id, typingGhost?.text, visibleEntries.length]);
 
   if (stage === "arrive") {
     return (
-      <main className="relative flex min-h-[100dvh] items-center justify-center px-6 py-12">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(90,164,194,0.16),transparent_18%),radial-gradient(circle_at_50%_68%,rgba(6,18,24,0.28),transparent_34%),linear-gradient(180deg,#010204_0%,#000_100%)]" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_42%,rgba(0,0,0,0.8)_100%)]" />
+      <main className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden px-6 py-12">
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,#0A0A0F_0%,#000_100%)]" />
+        <div className="pointer-events-none absolute inset-0 opacity-[0.04] mix-blend-screen" style={{ backgroundImage: "linear-gradient(180deg, rgba(232,213,160,0.12) 0, rgba(255,255,255,0) 1px)", backgroundSize: "100% 4px" }} />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_38%,rgba(0,0,0,0.78)_100%)]" />
 
         <div className="relative z-10 flex w-full max-w-sm flex-col items-center text-center">
-          <TerminalOrb state="idle" />
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: CONTAINER_EASE }}
+          >
+            <SignalMarkPresence state="idle" />
+          </motion.div>
           <motion.p
             initial={{ opacity: 0, y: 8, filter: "blur(10px)" }}
-            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-            transition={{ duration: 0.7, delay: 0.12, ease: CONTAINER_EASE }}
-            className="mt-10 text-[2rem] leading-[1.02] text-white/92 sm:text-[2.35rem]"
+            animate={{ opacity: 0.95, y: 0, filter: "blur(0px)" }}
+            transition={{ duration: 0.8, delay: 0.16, ease: CONTAINER_EASE }}
+            className="mt-8 text-[2rem] leading-[1.02] text-[rgba(245,240,232,0.96)] sm:text-[2.25rem]"
             style={{ fontFamily: '"Cormorant Garamond", serif', fontStyle: "italic" }}
           >
-            The line is open.
+            We’ll make this useful.
           </motion.p>
           <button
             type="button"
@@ -567,8 +653,8 @@ export function SignalCardTerminal({
           >
             <motion.span
               className="inline-block h-2.5 w-2.5 rounded-full bg-[#7de0ff]"
-              animate={{ scale: [1, 1.3, 1], opacity: [0.6, 1, 0.6] }}
-              transition={{ duration: 1.6, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
+              animate={{ scale: [1, 1.16, 1], opacity: [0.55, 1, 0.55] }}
+              transition={{ duration: 1.8, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
             />
             Open the line
           </button>
@@ -579,54 +665,81 @@ export function SignalCardTerminal({
 
   return (
     <main className="relative min-h-[100dvh] overflow-hidden px-5 py-6 sm:px-6 sm:py-8">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_10%,rgba(52,105,126,0.16),transparent_28%),linear-gradient(180deg,#010204_0%,#000_100%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,#0A0A0F_0%,#000_100%)]" />
       <div
-        className="pointer-events-none absolute inset-0 opacity-[0.04] mix-blend-screen"
+        className="pointer-events-none absolute inset-0 opacity-[0.035] mix-blend-screen"
         style={{
           backgroundImage:
-            "linear-gradient(180deg, rgba(255,255,255,0.12) 0, rgba(255,255,255,0) 1px)",
+            "linear-gradient(180deg, rgba(232,213,160,0.12) 0, rgba(255,255,255,0) 1px)",
           backgroundSize: "100% 4px",
         }}
       />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_46%,rgba(0,0,0,0.82)_100%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_42%,rgba(0,0,0,0.84)_100%)]" />
+      <svg className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.09]" viewBox="0 0 430 900" fill="none" preserveAspectRatio="none" aria-hidden>
+        <path d="M-20 220C108 136 182 136 310 220C368 258 426 312 478 382" stroke="rgba(196,162,101,0.11)" strokeWidth="1" />
+        <path d="M-28 548C126 442 230 448 396 566" stroke="rgba(196,162,101,0.08)" strokeWidth="1" />
+        <path d="M66 0V900" stroke="rgba(196,162,101,0.03)" strokeWidth="1" />
+        <path d="M366 0V900" stroke="rgba(196,162,101,0.03)" strokeWidth="1" />
+      </svg>
 
-      <div className="relative z-10 mx-auto flex min-h-[calc(100dvh-3rem)] w-full max-w-[28rem] flex-col">
-        <div className="flex items-start justify-between gap-4">
+      <div className="relative z-10 mx-auto flex min-h-[calc(100dvh-3rem)] w-full max-w-[26rem] flex-col">
+        <div className="relative flex min-h-[6rem] items-start justify-center">
           <div className="pt-1">
-            <TerminalOrb state={orbState} />
+            <SignalMarkPresence state={orbState} />
           </div>
           <button
             type="button"
             onClick={onReset}
-            className="mt-2 inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.32em] text-white/26 transition hover:text-white/56"
+            className="absolute right-0 top-2 inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.32em] text-white/22 transition hover:text-white/48"
           >
             <RotateCcw className="h-3.5 w-3.5" />
             Reset
           </button>
         </div>
 
-        <div className="mt-10 flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <div className="space-y-6 pb-10">
-            {entries.map(entry =>
-              entry.speaker === "ghost" ? (
-                <GhostLine key={entry.id} entry={entry} />
-              ) : (
-                <VisitorLine key={entry.id} entry={entry} />
-              )
-            )}
-
-            {typingGhost ? (
-              <GhostLine key={typingGhost.id} entry={typingGhost} onDone={onTypingGhostDone} />
-            ) : null}
-
-            {statusLine && !entries.length && !typingGhost ? (
-              <p className="max-w-[85%] font-mono text-[12px] leading-[1.7] tracking-[0.02em] text-white/42">
+        <div
+          className="mt-4 flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          style={{
+            maskImage:
+              "linear-gradient(to bottom, transparent 0%, black 8%, black 70%, transparent 100%)",
+            WebkitMaskImage:
+              "linear-gradient(to bottom, transparent 0%, black 8%, black 70%, transparent 100%)",
+          }}
+        >
+          <div className="space-y-5 pb-14 pt-2">
+            {!visibleEntries.length && !typingGhost && statusLine ? (
+              <p className="max-w-[72%] font-mono text-[11px] leading-[1.72] tracking-[0.03em] text-white/24">
                 {statusLine}
               </p>
             ) : null}
 
+            {visibleEntries.map((entry, index) => {
+              const age = visibleEntries.length - index - 1;
+              const opacity = Math.max(0.12, 1 - age * 0.2);
+              const blur = Math.min(2.4, age * 0.55);
+
+              return (
+                <div key={entry.id}>
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, filter: "blur(8px)" }}
+                    animate={{ opacity, y: 0, filter: `blur(${blur}px)` }}
+                    transition={{ duration: 0.55, ease: CONTAINER_EASE }}
+                    className="will-change-transform"
+                  >
+                    {entry.speaker === "ghost" ? <GhostLine entry={entry} /> : <VisitorLine entry={entry} />}
+                  </motion.div>
+
+                  {breakAfterIds.has(entry.id) ? (
+                    <SignalGraphicBreak variant={breakAfterIds.get(entry.id) ?? 0} />
+                  ) : null}
+                </div>
+              );
+            })}
+
+            {typingGhost ? <GhostLine key={typingGhost.id} entry={typingGhost} onDone={onTypingGhostDone} /> : null}
+
             {error ? (
-              <p className="max-w-[85%] font-mono text-[12px] leading-[1.7] tracking-[0.02em] text-[#d4b27d]/64">
+              <p className="max-w-[78%] font-mono text-[12px] leading-[1.7] tracking-[0.02em] text-[rgba(196,162,101,0.7)]">
                 {error}
               </p>
             ) : null}
@@ -683,7 +796,7 @@ export function SignalCardTerminal({
             </AnimatePresence>
 
             {!activePrompt && !textFallbackOpen ? (
-              <div className="flex items-center justify-between gap-4 pt-2">
+              <div className="flex items-center justify-between gap-4 pt-1">
                 <VoiceOption
                   active={voiceActive}
                   disabled={voiceDisabled}
@@ -693,7 +806,7 @@ export function SignalCardTerminal({
                 <button
                   type="button"
                   onClick={onOpenTextFallback}
-                  className="text-[10px] uppercase tracking-[0.32em] text-white/24 transition hover:text-white/52"
+                  className="text-[10px] uppercase tracking-[0.32em] text-white/20 transition hover:text-white/42"
                 >
                   Type
                 </button>
@@ -703,14 +816,15 @@ export function SignalCardTerminal({
             {readyToReveal ? (
               <PromptShell>
                 <div className="flex items-center justify-between gap-4 border-t border-white/8 pt-4">
-                  <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-white/34">
+                  <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-white/28">
                     The film is waiting.
                   </p>
                   <button
                     type="button"
                     onClick={onReveal}
                     disabled={revealPending}
-                    className="text-[10px] uppercase tracking-[0.34em] text-[#d4b27d]/82 transition hover:text-[#f4dfbc] disabled:cursor-not-allowed disabled:opacity-40"
+                    className="text-[10px] uppercase tracking-[0.34em] transition hover:text-[#f4dfbc] disabled:cursor-not-allowed disabled:opacity-40"
+                    style={{ color: `${GOLD}D0` }}
                   >
                     Summon reveal
                   </button>

@@ -34,19 +34,19 @@ const CLASSIFY_OPTIONS = [
 ] as const;
 
 const INPUT_PLACEHOLDERS: Record<(typeof CLASSIFY_OPTIONS)[number]["id"], string> = {
-  client: "Tell it what is broken.",
-  partner: "Say where the overlap is.",
-  investor: "Ask for the version that matters.",
-  operator: "Say what needs to move now.",
-  other: "Type into the dark.",
+  client: "What is failing?",
+  partner: "Where is the overlap real?",
+  investor: "Ask the sharp question.",
+  operator: "What has to move?",
+  other: "Say it plainly.",
 };
 
 const CLASSIFY_RESPONSES: Record<(typeof CLASSIFY_OPTIONS)[number]["id"], string> = {
-  client: "Tell me the problem. I'll show you what already exists.",
-  partner: "Tell me where the alignment is from your side.",
-  investor: "Fine. I'll keep it clean.",
-  operator: "Say what the room is resisting.",
-  other: "Then say it plainly.",
+  client: "Good. Give me the real problem.",
+  partner: "Good. Where does the fit hold?",
+  investor: "Good. Ask for the sharp version.",
+  operator: "Good. What is stuck right now?",
+  other: "Good. Put it cleanly.",
 };
 
 const SURFACE_EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
@@ -87,7 +87,6 @@ export default function ThirdMarkHome() {
   const [stage, setStage] = useState<Stage>("arrive");
   const [flowState, setFlowState] = useState<FlowState>("onboarding");
   const [nameDraft, setNameDraft] = useState("");
-  const [visitorName, setVisitorName] = useState("");
   const [composerValue, setComposerValue] = useState("");
   const [showTextFallback, setShowTextFallback] = useState(false);
   const [storyboardData, setStoryboardData] = useState<any>(null);
@@ -209,7 +208,6 @@ export default function ThirdMarkHome() {
     setStoryboardData(null);
     setFlowState("onboarding");
     setNameDraft("");
-    setVisitorName("");
     setComposerValue("");
     setShowTextFallback(false);
     setPromptState(null);
@@ -229,17 +227,12 @@ export default function ThirdMarkHome() {
     setLocalLines([]);
     setTypingGhost(null);
     setNameDraft("");
-    setVisitorName("");
     setComposerValue("");
     setStage("live");
 
     window.setTimeout(() => {
-      speakGhost("Lenox's line is open.", () => {
-        window.setTimeout(() => {
-          speakGhost("What should I call you?", () => {
-            setPromptState({ type: "name" });
-          });
-        }, 180);
+      speakGhost("What should I call you, if anything?", () => {
+        setPromptState({ type: "name" });
       });
     }, 120);
   }, [primeAudioOutput, speakGhost]);
@@ -263,19 +256,16 @@ export default function ThirdMarkHome() {
 
   const handleNameSubmit = useCallback(() => {
     const normalized = nameDraft.trim();
-    const line = normalized || "No name.";
 
-    pushVisitorLine(line);
-    setVisitorName(normalized);
+    if (normalized) {
+      pushVisitorLine(normalized);
+    }
+
     setNameDraft("");
     setPromptState(null);
 
-    speakGhost(normalized ? `${normalized}.` : "No name, then.", () => {
-      window.setTimeout(() => {
-        speakGhost("What brought you here?", () => {
-          setPromptState({ type: "classify" });
-        });
-      }, 120);
+    speakGhost("What brought you here?", () => {
+      setPromptState({ type: "classify" });
     });
   }, [nameDraft, pushVisitorLine, speakGhost]);
 
@@ -407,7 +397,7 @@ export default function ThirdMarkHome() {
       return {
         type: "name",
         value: nameDraft,
-        placeholder: "If you want the line to know it.",
+        placeholder: "Only if it helps.",
         submitLabel: "Continue",
         onChange: setNameDraft,
         onSubmit: handleNameSubmit,

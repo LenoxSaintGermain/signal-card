@@ -134,6 +134,7 @@ export function useThirdMarkLive({
   const outputAudioContextRef = useRef<AudioContext | null>(null);
   const nextPlaybackTimeRef = useRef(0);
   const activeOutputSourcesRef = useRef(new Set<AudioBufferSourceNode>());
+  const audioUnlockedRef = useRef(false);
 
   const [messages, setMessages] = useState<ThirdMarkMessage[]>([]);
   const [status, setStatus] = useState<ThirdMarkConnectionState>("idle");
@@ -240,6 +241,19 @@ export function useThirdMarkLive({
       }
     }
 
+    if (!audioUnlockedRef.current) {
+      try {
+        const buffer = audioContext.createBuffer(1, 1, audioContext.sampleRate || 22050);
+        const source = audioContext.createBufferSource();
+        source.buffer = buffer;
+        source.connect(audioContext.destination);
+        source.start(0);
+        audioUnlockedRef.current = true;
+      } catch {
+        // Context unlock buffer failed, ignore
+      }
+    }
+
     return audioContext.state === "running";
   }, []);
 
@@ -268,7 +282,7 @@ export function useThirdMarkLive({
             audioStreamEnd: true,
           });
         } catch {
-          sessionRef.current = null;
+          // Swallow closing errors gracefully
         }
       }
 
@@ -581,9 +595,12 @@ export function useThirdMarkLive({
               mimeType: `audio/pcm;rate=${Math.round(inputContext.sampleRate)}`,
             } as Parameters<Session["sendRealtimeInput"]>[0]["audio"],
           });
-        } catch {
-          sessionRef.current = null;
-          void stopVoiceCapture({ suppressStatusUpdate: true });
+        } catch (err: unknown) {
+          const isClosed = err instanceof Error && err.message.toLowerCase().includes("closing or closed");
+          if (isClosed) {
+            sessionRef.current = null;
+            void stopVoiceCapture({ suppressStatusUpdate: true });
+          }
         }
       };
 

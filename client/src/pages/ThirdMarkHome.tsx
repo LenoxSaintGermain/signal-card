@@ -1,11 +1,5 @@
+import { SignalCardTerminal, type SignalTerminalEntry, type SignalTerminalPrompt } from "@/components/third-mark/SignalCardTerminal";
 import { ThirdMarkGlyph } from "@/components/third-mark/ThirdMarkGlyph";
-import {
-  THIRD_SIGNAL_VOID_CATALOG_ID,
-  ThirdSignalVoidRenderer,
-  type ThirdSignalVoidAction,
-  type ThirdSignalVoidSurface,
-} from "@/components/third-mark/ThirdSignalVoidRenderer";
-import { CinematicWordReveal } from "@/components/third-mark/CinematicWordReveal";
 import { ScrollyTelling } from "@/components/ScrollyTelling";
 import {
   type ThirdMarkConnectionState,
@@ -13,19 +7,53 @@ import {
   useThirdMarkLive,
 } from "@/hooks/useThirdMarkLive";
 import { trpc } from "@/lib/trpc";
-import {
-  THIRD_MARK_LIVE_REVEAL_THRESHOLD,
-  THIRD_MARK_STARTER_PROMPTS,
-} from "@shared/thirdMark";
-import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUpRight, RotateCcw, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { THIRD_MARK_LIVE_REVEAL_THRESHOLD } from "@shared/thirdMark";
+import { motion } from "framer-motion";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type Stage = "arrive" | "live" | "processing" | "immersive";
+type FlowState = "onboarding" | "active";
+type PromptState =
+  | { type: "name" }
+  | { type: "classify" }
+  | { type: "input"; placeholder: string }
+  | null;
 
-const VOID_NOISE_URL =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E";
-const CINEMATIC_EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
+type LocalLine = {
+  id: string;
+  speaker: "ghost" | "visitor";
+  text: string;
+};
+
+const CLASSIFY_OPTIONS = [
+  { id: "client", label: "Client", sub: "I have work." },
+  { id: "partner", label: "Partner", sub: "There is alignment." },
+  { id: "investor", label: "Investor", sub: "Give me the clean version." },
+  { id: "operator", label: "Operator", sub: "I need clarity fast." },
+  { id: "other", label: "Other", sub: "Something else." },
+] as const;
+
+const INPUT_PLACEHOLDERS: Record<(typeof CLASSIFY_OPTIONS)[number]["id"], string> = {
+  client: "Tell it what is broken.",
+  partner: "Say where the overlap is.",
+  investor: "Ask for the version that matters.",
+  operator: "Say what needs to move now.",
+  other: "Type into the dark.",
+};
+
+const CLASSIFY_RESPONSES: Record<(typeof CLASSIFY_OPTIONS)[number]["id"], string> = {
+  client: "Tell me the problem. I'll show you what already exists.",
+  partner: "Tell me where the alignment is from your side.",
+  investor: "Fine. I'll keep it clean.",
+  operator: "Say what the room is resisting.",
+  other: "Then say it plainly.",
+};
+
+const SURFACE_EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
+
+function createLocalId(prefix: string) {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
 
 function buildTranscript(messages: ThirdMarkMessage[]) {
   return messages
@@ -34,68 +62,44 @@ function buildTranscript(messages: ThirdMarkMessage[]) {
     .join("\n");
 }
 
-function trimText(text: string, limit = 88) {
-  const normalized = text.replace(/\s+/g, " ").trim();
-  if (normalized.length <= limit) return normalized;
-  return `${normalized.slice(0, limit - 1).trim()}...`;
-}
-
-function getStatusWhisper(status: ThirdMarkConnectionState, voiceState: string) {
-  if (status === "booting") return "The line is opening.";
+function getStatusLine(status: ThirdMarkConnectionState, voiceState: string) {
+  if (status === "booting") return "The line is waking up.";
   if (status === "listening") return "It is listening.";
-  if (status === "replying") return "Something is forming in the dark.";
+  if (status === "replying") return "It is answering.";
   if (status === "error") return "The line slipped. Stay with it.";
-  if (voiceState === "denied") return "The mic is blocked. The void will take text instead.";
-  if (voiceState === "unsupported") return "This room does not support voice. Type into the dark instead.";
-  return "Speak first. Type only if you must.";
+  if (voiceState === "denied") return "The mic is blocked. Text will do.";
+  if (voiceState === "unsupported") return "This room cannot carry voice.";
+  return "Say something real.";
 }
 
-function getVoidStageState(
-  status: ThirdMarkConnectionState,
-  readyToReveal: boolean
-): "idle" | "wake" | "listening" | "answering" | "reveal" {
-  if (readyToReveal) return "reveal";
-  if (status === "booting") return "wake";
-  if (status === "listening") return "listening";
-  if (status === "replying") return "answering";
-  return "idle";
-}
-
-function getMarkMode(
-  status: ThirdMarkConnectionState,
-  readyToReveal: boolean
-): "idle" | "wake" | "listen" | "answer" | "reveal" {
-  if (readyToReveal) return "reveal";
-  if (status === "booting") return "wake";
-  if (status === "listening") return "listen";
-  if (status === "replying") return "answer";
-  return "idle";
-}
-
-function getHaloIntensity(
+function getOrbState(
   status: ThirdMarkConnectionState,
   voiceState: string,
-  readyToReveal: boolean
-) {
-  if (readyToReveal) return 0.9;
-  if (status === "listening") return 0.84;
-  if (status === "replying") return 0.58;
-  if (status === "booting") return 0.42;
-  if (status === "error") return 0.22;
-  if (voiceState === "recording") return 0.74;
-  return 0.18;
+  hasTypingGhost: boolean
+): "idle" | "speaking" | "listening" | "processing" {
+  if (voiceState === "recording" || status === "listening") return "listening";
+  if (hasTypingGhost || status === "replying") return "speaking";
+  if (status === "booting") return "processing";
+  return "idle";
 }
 
 export default function ThirdMarkHome() {
   const [stage, setStage] = useState<Stage>("arrive");
-  const [participantName, setParticipantName] = useState("");
-  const [draftName, setDraftName] = useState("");
+  const [flowState, setFlowState] = useState<FlowState>("onboarding");
+  const [nameDraft, setNameDraft] = useState("");
+  const [visitorName, setVisitorName] = useState("");
   const [composerValue, setComposerValue] = useState("");
   const [showTextFallback, setShowTextFallback] = useState(false);
   const [storyboardData, setStoryboardData] = useState<any>(null);
   const [movieSlug, setMovieSlug] = useState<string | null>(null);
   const [sessionKey, setSessionKey] = useState(0);
+  const [promptState, setPromptState] = useState<PromptState>(null);
+  const [localLines, setLocalLines] = useState<LocalLine[]>([]);
+  const [typingGhost, setTypingGhost] = useState<LocalLine | null>(null);
+
   const revealContextRef = useRef<{ transcript: string; messages: ThirdMarkMessage[] } | null>(null);
+  const ghostAfterRef = useRef<(() => void) | null>(null);
+  const deferredVoiceStartRef = useRef(false);
 
   const {
     messages,
@@ -109,7 +113,7 @@ export default function ThirdMarkHome() {
     userTurns,
   } = useThirdMarkLive({
     enabled: stage === "live",
-    participantName,
+    participantName: undefined,
     sessionKey,
   });
 
@@ -133,16 +137,17 @@ export default function ThirdMarkHome() {
     undefined;
 
   useEffect(() => {
-    if (voiceState === "unsupported" || voiceState === "denied") {
-      setShowTextFallback(true);
-    }
-  }, [voiceState]);
-
-  useEffect(() => {
     if (savedStoryboard) {
       setStoryboardData(savedStoryboard);
     }
   }, [savedStoryboard]);
+
+  useEffect(() => {
+    if (stage !== "live") return;
+    if (!deferredVoiceStartRef.current || status !== "connected") return;
+    deferredVoiceStartRef.current = false;
+    void startVoiceCapture();
+  }, [stage, startVoiceCapture, status]);
 
   const saveToCinema = trpc.cinema.save.useMutation();
   const generateInsight = trpc.insights.generate.useMutation({
@@ -176,53 +181,214 @@ export default function ThirdMarkHome() {
     },
   });
 
-  const readyToReveal = userTurns >= THIRD_MARK_LIVE_REVEAL_THRESHOLD;
-  const starterPrompts = useMemo(() => [...THIRD_MARK_STARTER_PROMPTS], []);
-  const whisperMessage = useMemo(() => {
-    const modelMessage = [...messages].reverse().find(message => message.role === "model");
-    if (modelMessage) return modelMessage;
-    return [...messages].reverse().find(message => message.role === "guide") ?? null;
-  }, [messages]);
-  const lastUserMessage = useMemo(
-    () => [...messages].reverse().find(message => message.role === "user") ?? null,
-    [messages]
-  );
-  const residueMessages = useMemo(() => {
-    const currentWhisperId = whisperMessage?.id;
-    return messages
-      .filter(message => message.role !== "guide" && message.id !== currentWhisperId)
-      .slice(-6);
-  }, [messages, whisperMessage?.id]);
+  const speakGhost = useCallback((text: string, after?: () => void) => {
+    ghostAfterRef.current = after ?? null;
+    setTypingGhost({
+      id: createLocalId("ghost"),
+      speaker: "ghost",
+      text,
+    });
+  }, []);
 
-  const handleBegin = () => {
+  const pushVisitorLine = useCallback((text: string) => {
+    setLocalLines(current => [
+      ...current,
+      {
+        id: createLocalId("visitor"),
+        speaker: "visitor",
+        text,
+      },
+    ]);
+  }, []);
+
+  const resetExperience = useCallback(() => {
+    ghostAfterRef.current = null;
+    deferredVoiceStartRef.current = false;
+    revealContextRef.current = null;
+    setMovieSlug(null);
+    setStoryboardData(null);
+    setFlowState("onboarding");
+    setNameDraft("");
+    setVisitorName("");
+    setComposerValue("");
+    setShowTextFallback(false);
+    setPromptState(null);
+    setLocalLines([]);
+    setTypingGhost(null);
+    setSessionKey(current => current + 1);
+    setStage("arrive");
+  }, []);
+
+  const startConversation = useCallback(() => {
     void primeAudioOutput();
-    setParticipantName(draftName.trim());
+    ghostAfterRef.current = null;
+    deferredVoiceStartRef.current = false;
+    setFlowState("onboarding");
+    setShowTextFallback(false);
+    setPromptState(null);
+    setLocalLines([]);
+    setTypingGhost(null);
+    setNameDraft("");
+    setVisitorName("");
+    setComposerValue("");
     setStage("live");
-  };
 
-  const handleSend = () => {
-    if (!composerValue.trim()) return;
+    window.setTimeout(() => {
+      speakGhost("Lenox's line is open.", () => {
+        window.setTimeout(() => {
+          speakGhost("What should I call you?", () => {
+            setPromptState({ type: "name" });
+          });
+        }, 180);
+      });
+    }, 120);
+  }, [primeAudioOutput, speakGhost]);
+
+  const handleTypingGhostDone = useCallback(
+    (lineId: string) => {
+      setTypingGhost(current => {
+        if (!current || current.id !== lineId) return current;
+        setLocalLines(lines => [...lines, current]);
+        return null;
+      });
+
+      const after = ghostAfterRef.current;
+      ghostAfterRef.current = null;
+      if (after) {
+        window.setTimeout(after, 150);
+      }
+    },
+    []
+  );
+
+  const handleNameSubmit = useCallback(() => {
+    const normalized = nameDraft.trim();
+    const line = normalized || "No name.";
+
+    pushVisitorLine(line);
+    setVisitorName(normalized);
+    setNameDraft("");
+    setPromptState(null);
+
+    speakGhost(normalized ? `${normalized}.` : "No name, then.", () => {
+      window.setTimeout(() => {
+        speakGhost("What brought you here?", () => {
+          setPromptState({ type: "classify" });
+        });
+      }, 120);
+    });
+  }, [nameDraft, pushVisitorLine, speakGhost]);
+
+  const handleChooseRoute = useCallback(
+    (routeId: (typeof CLASSIFY_OPTIONS)[number]["id"]) => {
+      const choice = CLASSIFY_OPTIONS.find(option => option.id === routeId);
+      if (!choice) return;
+
+      pushVisitorLine(choice.label);
+      setPromptState(null);
+      speakGhost(CLASSIFY_RESPONSES[routeId], () => {
+        setPromptState({
+          type: "input",
+          placeholder: INPUT_PLACEHOLDERS[routeId],
+        });
+      });
+    },
+    [pushVisitorLine, speakGhost]
+  );
+
+  const handleTextSubmit = useCallback(() => {
+    const normalized = composerValue.trim();
+    if (!normalized) return;
+
     void primeAudioOutput();
-    const sent = sendMessage(composerValue);
+    setFlowState("active");
+    setPromptState(null);
+    setShowTextFallback(false);
+
+    const sent = sendMessage(normalized);
     if (sent) {
       setComposerValue("");
+      return;
     }
-  };
 
-  const handleStarterPrompt = (prompt: string) => {
+    setShowTextFallback(true);
+    setPromptState({
+      type: "input",
+      placeholder: "Type into the dark.",
+    });
+  }, [composerValue, primeAudioOutput, sendMessage]);
+
+  const handleOpenTextFallback = useCallback(() => {
+    setFlowState("active");
+    setPromptState(null);
+    setShowTextFallback(true);
+  }, []);
+
+  const handleVoiceToggle = useCallback(() => {
     void primeAudioOutput();
-    const sent = sendMessage(prompt);
-    if (!sent) {
-      setComposerValue(prompt);
-      setShowTextFallback(true);
+
+    if (voiceState === "recording") {
+      void stopVoiceCapture();
+      return;
     }
-  };
+
+    setFlowState("active");
+    setPromptState(null);
+    setShowTextFallback(false);
+
+    if (status === "connected") {
+      void startVoiceCapture();
+      return;
+    }
+
+    deferredVoiceStartRef.current = true;
+    if (status === "idle" || status === "error") {
+      setSessionKey(current => current + 1);
+    }
+  }, [primeAudioOutput, startVoiceCapture, status, stopVoiceCapture, voiceState]);
+
+  const liveEntries = useMemo<SignalTerminalEntry[]>(() => {
+    if (flowState !== "active") return [];
+
+    return messages
+      .filter(message => message.role !== "guide")
+      .map(message => ({
+        id: message.id,
+        speaker: message.role === "user" ? "visitor" : "ghost",
+        text: message.text,
+        status: message.status,
+      }));
+  }, [flowState, messages]);
+
+  const terminalEntries = useMemo<SignalTerminalEntry[]>(() => {
+    const local = localLines.map(line => ({
+      id: line.id,
+      speaker: line.speaker,
+      text: line.text,
+      status: "complete" as const,
+    }));
+
+    return [...local, ...liveEntries];
+  }, [liveEntries, localLines]);
+
+  const transcriptMessages = useMemo<ThirdMarkMessage[]>(() => {
+    const localMessageLines = localLines.map<ThirdMarkMessage>(line => ({
+      id: line.id,
+      role: line.speaker === "visitor" ? "user" : "guide",
+      text: line.text,
+      status: "complete",
+    }));
+
+    return [...localMessageLines, ...messages];
+  }, [localLines, messages]);
+
+  const readyToReveal = flowState === "active" && userTurns >= THIRD_MARK_LIVE_REVEAL_THRESHOLD;
 
   const handleReveal = () => {
-    const transcript = buildTranscript(messages);
+    const transcript = buildTranscript(transcriptMessages);
     revealContextRef.current = {
       transcript,
-      messages,
+      messages: transcriptMessages,
     };
 
     setStage("processing");
@@ -236,478 +402,154 @@ export default function ThirdMarkHome() {
     });
   };
 
-  const handleRestart = () => {
-    revealContextRef.current = null;
-    setMovieSlug(null);
-    setStoryboardData(null);
-    setComposerValue("");
-    setShowTextFallback(false);
-    setSessionKey(current => current + 1);
-    setStage("arrive");
-  };
-
-  const handleVoiceToggle = () => {
-    void primeAudioOutput();
-    if (voiceState === "recording") {
-      void stopVoiceCapture();
-      return;
-    }
-    void startVoiceCapture();
-  };
-
-  const centerWhisper =
-    whisperMessage?.text?.trim() ||
-    (stage === "live"
-      ? getStatusWhisper(status, voiceState)
-      : "Lenox opened a line. Say something true.");
-
-  const liveSurface = useMemo<ThirdSignalVoidSurface>(() => {
-    const stageState = getVoidStageState(status, readyToReveal);
-    const children = ["halo", "mark", "whisper"];
-    const components: ThirdSignalVoidSurface["components"] = [
-      {
-        id: "stage",
-        component: "VoidStage",
-        state: stageState,
-        children,
-      },
-      {
-        id: "halo",
-        component: "SignalHalo",
-        intensity: getHaloIntensity(status, voiceState, readyToReveal),
-        pulseMode:
-          status === "error"
-            ? "error"
-            : stageState === "answering"
-              ? "answer"
-              : stageState,
-      },
-      {
-        id: "mark",
-        component: "MarkCore",
-        mode: getMarkMode(status, readyToReveal),
-        size: readyToReveal ? "xl" : "lg",
-        audioReactive: true,
-      },
-      {
-        id: "whisper",
-        component: "WhisperText",
-        text: centerWhisper,
-        mode: whisperMessage?.status === "streaming" ? "fragment" : whisperMessage ? "resolved" : "echo",
-        placement: "lower-third",
-        speaker: whisperMessage?.role ?? "guide",
-        messageId: whisperMessage?.id,
-        streaming: whisperMessage?.status === "streaming",
-        echo:
-          lastUserMessage && lastUserMessage.id !== whisperMessage?.id
-            ? trimText(lastUserMessage.text)
-            : undefined,
-      },
-    ];
-
-    if (residueMessages.length > 0) {
-      children.push("residue");
-      components.push({
-        id: "residue",
-        component: "ResidueTrail",
-        items: residueMessages.map(message => ({
-          id: message.id,
-          text: message.text,
-          role: message.role === "user" ? "user" : "model",
-        })),
-        maxVisible: 6,
-      });
+  const activePrompt = useMemo<SignalTerminalPrompt | null>(() => {
+    if (promptState?.type === "name") {
+      return {
+        type: "name",
+        value: nameDraft,
+        placeholder: "If you want the line to know it.",
+        submitLabel: "Continue",
+        onChange: setNameDraft,
+        onSubmit: handleNameSubmit,
+      };
     }
 
-    if (readyToReveal) {
-      children.push("portal");
-      components.push({
-        id: "portal",
-        component: "RevealPortal",
-        armed: true,
-        title: "Summon The Reveal",
-        action: { name: "summon_reveal" },
-        disabled: status === "replying" || generateInsight.isPending,
-      });
-    } else {
-      children.push("hold");
-      components.push({
-        id: "hold",
-        component: "HoldToSpeakGlyph",
-        label:
-          voiceState === "recording" ? "The line is listening" : "Break The Silence",
-        action: voiceState === "recording" ? { name: "stop_mic" } : { name: "open_mic" },
-        active: voiceState === "recording",
-        disabled:
-          voiceState === "unsupported" || status === "booting" || generateInsight.isPending,
-        secondaryLabel: showTextFallback ? undefined : "Type Instead",
-        secondaryAction: showTextFallback ? undefined : { name: "switch_to_text" },
-      });
+    if (promptState?.type === "classify") {
+      return {
+        type: "choices",
+        choices: CLASSIFY_OPTIONS.map(option => ({ ...option })),
+        onChoose: id => handleChooseRoute(id as (typeof CLASSIFY_OPTIONS)[number]["id"]),
+      };
     }
 
-    if (messages.length <= 1) {
-      children.push("sigils");
-      components.push({
-        id: "sigils",
-        component: "ChoiceSigil",
-        choices: starterPrompts.map(prompt => ({
-          id: prompt,
-          label: prompt,
-          action: { name: "choose_route", value: prompt },
-        })),
-      });
+    if (promptState?.type === "input") {
+      return {
+        type: "input",
+        value: composerValue,
+        placeholder: promptState.placeholder,
+        submitLabel: "Send",
+        onChange: setComposerValue,
+        onSubmit: handleTextSubmit,
+        submitDisabled: !composerValue.trim() || generateInsight.isPending,
+      };
     }
 
-    if (error || voiceState === "denied" || voiceState === "unsupported") {
-      children.push("interruption");
-      components.push({
-        id: "interruption",
-        component: "InterruptionHint",
-        text: error ?? getStatusWhisper(status, voiceState),
-        tone: "warning",
-        actionLabel: showTextFallback ? undefined : "Use Text",
-        action: showTextFallback ? undefined : { name: "switch_to_text" },
-      });
-    }
+    return null;
+  }, [composerValue, generateInsight.isPending, handleChooseRoute, handleNameSubmit, handleTextSubmit, nameDraft, promptState]);
 
-    return {
-      surfaceId: "void-main",
-      catalogId: THIRD_SIGNAL_VOID_CATALOG_ID,
-      components,
-    };
-  }, [
-    centerWhisper,
-    error,
-    generateInsight.isPending,
-    lastUserMessage,
-    messages.length,
-    readyToReveal,
-    residueMessages,
-    showTextFallback,
-    starterPrompts,
-    status,
-    voiceState,
-    whisperMessage,
-  ]);
-
-  const handleVoidAction = (action: ThirdSignalVoidAction) => {
-    switch (action.name) {
-      case "open_mic":
-      case "stop_mic":
-        handleVoiceToggle();
-        break;
-      case "switch_to_text":
-        setShowTextFallback(true);
-        break;
-      case "choose_route":
-        handleStarterPrompt(action.value);
-        break;
-      case "summon_reveal":
-        handleReveal();
-        break;
-      case "dismiss_apparition":
-        break;
-      default:
-        break;
-    }
-  };
+  const orbState = getOrbState(status, voiceState, Boolean(typingGhost));
 
   return (
-    <div className="min-h-[100dvh] overflow-hidden bg-[#010204] text-[#E7F7FF]">
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_50%_35%,rgba(54,130,180,0.22),transparent_18%),radial-gradient(circle_at_50%_60%,rgba(19,52,73,0.28),transparent_36%),linear-gradient(180deg,#020304_0%,#000000_42%,#020409_100%)]" />
-      <motion.div
-        aria-hidden
-        className="pointer-events-none fixed inset-0 opacity-[0.045] mix-blend-soft-light"
-        animate={{ opacity: [0.032, 0.05, 0.036] }}
-        transition={{ duration: 5.5, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
-        style={{ backgroundImage: `url("${VOID_NOISE_URL}")`, backgroundSize: "220px 220px" }}
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none fixed inset-0 opacity-[0.06] mix-blend-screen"
-        style={{
-          backgroundImage:
-            "linear-gradient(180deg, rgba(255,255,255,0.15) 0, rgba(255,255,255,0) 1px)",
-          backgroundSize: "100% 4px",
-        }}
-      />
-      <motion.div
-        aria-hidden
-        className="pointer-events-none fixed inset-0 opacity-70"
-        animate={{ opacity: [0.45, 0.68, 0.5] }}
-        transition={{ duration: 7, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
-        style={{
-          backgroundImage:
-            "radial-gradient(circle at center, rgba(125, 237, 255, 0.08), transparent 0), radial-gradient(circle at center, rgba(125, 237, 255, 0.02) 1px, transparent 1px)",
-          backgroundSize: "100% 100%, 4px 4px",
-          mixBlendMode: "screen",
-        }}
-      />
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_center,transparent_38%,rgba(0,0,0,0.78)_100%)]" />
+    <div className="min-h-[100dvh] overflow-hidden bg-black text-[#E7F7FF]">
+      {(voiceState === "unsupported" || voiceState === "denied") && !promptState && flowState === "active" && !showTextFallback ? (
+        <div className="sr-only">Voice is unavailable. Text fallback is open.</div>
+      ) : null}
 
-      <AnimatePresence mode="wait">
-        {stage === "arrive" && (
-          <motion.main
-            key="arrive"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.4, ease: CINEMATIC_EASE }}
-            className="relative flex min-h-[100dvh] items-center justify-center px-6 py-12"
-          >
+      {stage === "arrive" && (
+        <SignalCardTerminal
+          stage="arrive"
+          orbState="idle"
+          entries={[]}
+          typingGhost={null}
+          activePrompt={null}
+          textFallbackOpen={false}
+          textFallbackValue=""
+          voiceActive={false}
+          readyToReveal={false}
+          revealPending={false}
+          onBegin={startConversation}
+          onReset={resetExperience}
+          onTypingGhostDone={handleTypingGhostDone}
+          onVoiceToggle={handleVoiceToggle}
+          onOpenTextFallback={handleOpenTextFallback}
+          onTextFallbackChange={setComposerValue}
+          onTextFallbackSubmit={handleTextSubmit}
+          onReveal={handleReveal}
+        />
+      )}
+
+      {stage === "live" && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, ease: SURFACE_EASE }}
+        >
+          <SignalCardTerminal
+            stage="live"
+            orbState={orbState}
+            entries={terminalEntries}
+            typingGhost={typingGhost}
+            activePrompt={activePrompt}
+            textFallbackOpen={showTextFallback && !promptState}
+            textFallbackValue={composerValue}
+            textFallbackDisabled={!composerValue.trim() || generateInsight.isPending}
+            statusLine={getStatusLine(status, voiceState)}
+            error={error}
+            voiceActive={voiceState === "recording"}
+            voiceDisabled={status === "booting" || generateInsight.isPending}
+            readyToReveal={readyToReveal}
+            revealPending={generateInsight.isPending}
+            onBegin={startConversation}
+            onReset={resetExperience}
+            onTypingGhostDone={handleTypingGhostDone}
+            onVoiceToggle={handleVoiceToggle}
+            onOpenTextFallback={handleOpenTextFallback}
+            onTextFallbackChange={setComposerValue}
+            onTextFallbackSubmit={handleTextSubmit}
+            onReveal={handleReveal}
+          />
+        </motion.div>
+      )}
+
+      {stage === "processing" && (
+        <motion.main
+          key="processing"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.45 }}
+          className="relative flex min-h-[100dvh] items-center justify-center px-6"
+        >
+          <div className="absolute left-1/2 top-1/2 h-[34rem] w-[34rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#7DE0FF]/10" />
+          <div className="absolute left-1/2 top-1/2 h-[22rem] w-[22rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#7DE0FF]/12" />
+          <div className="relative z-10 mx-auto flex max-w-3xl flex-col items-center text-center">
             <motion.div
-              className="absolute inset-0"
-              animate={{ opacity: [0.24, 0.42, 0.24] }}
-              transition={{ duration: 6, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
+              animate={{ rotate: 360 }}
+              transition={{ duration: 10, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
+              className="mb-8"
             >
-              <div className="absolute left-1/2 top-1/2 h-[34rem] w-[34rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#7DE0FF]/12" />
-              <div className="absolute left-1/2 top-1/2 h-[24rem] w-[24rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#7DE0FF]/10" />
-              <div className="absolute left-1/2 top-1/2 h-[14rem] w-[14rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#C3E7FF]/10" />
+              <ThirdMarkGlyph expression="gift" size={132} />
             </motion.div>
+            <p className="text-[10px] uppercase tracking-[0.52em] text-[#8FDFFF]/56">
+              Distilling The Residue
+            </p>
+            <p
+              className="mt-6 text-4xl leading-[1.08] text-[#EAF9FF] sm:text-5xl"
+              style={{ fontFamily: '"Cormorant Garamond", serif' }}
+            >
+              The line is giving shape to what just surfaced.
+            </p>
+            <p className="mt-6 max-w-2xl text-base leading-8 text-[#A8C6D5]/66">
+              Fragments become scenes. Pressure becomes image. What mattered is being pulled forward.
+            </p>
+          </div>
+        </motion.main>
+      )}
 
-            <div className="relative z-10 mx-auto flex w-full max-w-4xl flex-col items-center text-center">
-              <motion.p
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 0.76, y: 0 }}
-                transition={{ delay: 0.12 }}
-                className="mb-6 text-[10px] uppercase tracking-[0.55em] text-[#8FDFFF]/72"
-              >
-                Private Line / Lenox / Third Signal
-              </motion.p>
-
-              <motion.div
-                initial={{ opacity: 0, scale: 0.94 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.9, ease: CINEMATIC_EASE }}
-                className="relative mb-10 flex h-56 w-56 items-center justify-center"
-              >
-                <motion.div
-                  className="absolute inset-0 rounded-full border border-[#7DE0FF]/14"
-                  animate={{
-                    scale: [0.94, 1.08, 0.94],
-                    opacity: [0.18, 0.56, 0.18],
-                    boxShadow: [
-                      "0 0 0 rgba(94,234,212,0)",
-                      "0 0 42px rgba(94,234,212,0.12)",
-                      "0 0 0 rgba(94,234,212,0)",
-                    ],
-                  }}
-                  transition={{ duration: 3.5, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
-                />
-                <motion.div
-                  className="absolute inset-[10%] rounded-full border border-[#7DE0FF]/10"
-                  animate={{ scale: [1.02, 0.97, 1.02], opacity: [0.18, 0.4, 0.18] }}
-                  transition={{ duration: 4.4, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
-                />
-                <ThirdMarkGlyph expression="arrive" size={168} />
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.18, ease: CINEMATIC_EASE }}
-                className="max-w-[46rem] text-4xl leading-[1.04] text-[#EAF9FF] sm:text-5xl md:text-6xl"
-                style={{ fontFamily: '"Cormorant Garamond", serif' }}
-              >
-                <CinematicWordReveal
-                  text="Do not expect a website. Expect an answer."
-                  className="text-balance"
-                  wordClassName="mr-[0.22em] inline-block align-baseline"
-                  initialDelay={0.12}
-                  stagger={0.08}
-                  duration={0.26}
-                  blur={6}
-                />
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 0.72, y: 0 }}
-                transition={{ delay: 0.28, ease: CINEMATIC_EASE }}
-                className="mt-6 max-w-2xl text-base leading-8 text-[#C7DCEB] sm:text-lg"
-              >
-                <CinematicWordReveal
-                  text="Signal Card stays quiet until you give it something real. Speak if the room allows it. Type only if you must. Everything else should emerge from the dark."
-                  className="text-balance"
-                  wordClassName="mr-[0.24em] inline-block align-baseline"
-                  initialDelay={0.34}
-                  stagger={0.028}
-                  duration={0.22}
-                  blur={4}
-                />
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.46, ease: CINEMATIC_EASE }}
-                className="mt-12 flex w-full max-w-xl flex-col items-center gap-4"
-              >
-                <label className="w-full text-left text-[11px] uppercase tracking-[0.4em] text-[#9CC3D9]/48">
-                  Optional name, if you want the line to know it
-                </label>
-                <input
-                  value={draftName}
-                  onChange={event => setDraftName(event.target.value)}
-                  placeholder="Lenox"
-                  className="h-14 w-full rounded-full border border-white/10 bg-white/[0.03] px-6 text-center text-base text-[#EAF9FF] outline-none backdrop-blur-sm transition placeholder:text-[#92A8B7]/40 focus:border-[#7DE0FF]/40 focus:shadow-[0_0_0_1px_rgba(94,234,212,0.3),0_0_28px_rgba(94,234,212,0.08)]"
-                />
-                <button
-                  type="button"
-                  onClick={handleBegin}
-                  className="group mt-4 inline-flex items-center gap-3 rounded-full border border-[#7DE0FF]/18 bg-[#7DE0FF]/10 px-7 py-3 text-[11px] uppercase tracking-[0.45em] text-[#D7F6FF] transition hover:border-[#7DE0FF]/38 hover:bg-[#7DE0FF]/14"
-                >
-                  Open The Line
-                  <ArrowUpRight className="h-4 w-4 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-                </button>
-              </motion.div>
-            </div>
-          </motion.main>
-        )}
-
-        {stage === "live" && (
-          <motion.main
-            key="live"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.5, delay: 0.2, ease: CINEMATIC_EASE }}
-            className="relative min-h-[100dvh]"
-          >
-            <div className="pointer-events-none absolute left-6 top-6 z-20 max-w-[min(72vw,24rem)] px-1">
-              <p className="text-[10px] uppercase tracking-[0.5em] text-[#87CFE8]/64">
-                Signal Card / Private Line
-              </p>
-              <p className="mt-3 text-sm leading-7 text-[#9FC6D8]/70">
-                {participantName ? `${participantName}, the line is yours.` : "The line is open."} {getStatusWhisper(status, voiceState)}
-              </p>
-            </div>
-
-            <div className="absolute right-6 top-6 z-30 flex items-center gap-2">
-              {showTextFallback && (
-                <button
-                  type="button"
-                  onClick={() => setShowTextFallback(false)}
-                  className="inline-flex items-center gap-2 rounded-full border border-white/8 bg-white/[0.03] px-4 py-2 text-[10px] uppercase tracking-[0.34em] text-[#B6D9E8]/70 transition hover:border-[#7DE0FF]/24 hover:text-[#EAF9FF]"
-                >
-                  <X className="h-3.5 w-3.5" />
-                  Hide Text
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={handleRestart}
-                className="inline-flex items-center gap-2 rounded-full border border-white/8 bg-white/[0.03] px-4 py-2 text-[10px] uppercase tracking-[0.34em] text-[#B6D9E8]/70 transition hover:border-[#7DE0FF]/24 hover:text-[#EAF9FF]"
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-                Reset
-              </button>
-            </div>
-
-            <ThirdSignalVoidRenderer surface={liveSurface} onAction={handleVoidAction} />
-
-            <AnimatePresence>
-              {showTextFallback && (
-                <motion.div
-                  initial={{ opacity: 0, y: 24 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 24 }}
-                  transition={{ duration: 0.35 }}
-                  className="absolute inset-x-0 bottom-5 z-40 flex justify-center px-4"
-                >
-                  <div className="w-[min(92vw,48rem)] rounded-[2rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] p-4 shadow-[0_24px_90px_rgba(0,0,0,0.55)] backdrop-blur-xl">
-                    <div className="mb-3 flex items-center justify-between gap-4">
-                      <p className="text-[10px] uppercase tracking-[0.42em] text-[#8BCEE5]/58">
-                        Typed residue
-                      </p>
-                      <p className="text-[10px] uppercase tracking-[0.36em] text-[#7EAEC2]/46">
-                        Cmd/Ctrl + Enter
-                      </p>
-                    </div>
-                    <textarea
-                      value={composerValue}
-                      onChange={event => setComposerValue(event.target.value)}
-                      onKeyDown={event => {
-                        if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-                          event.preventDefault();
-                          handleSend();
-                        }
-                      }}
-                      placeholder="Type into the dark."
-                      className="min-h-[116px] w-full resize-none rounded-[1.4rem] border border-white/8 bg-black/24 px-5 py-4 text-base leading-7 text-[#EAF9FF] outline-none transition placeholder:text-[#88A6B8]/32 focus:border-[#7DE0FF]/26 focus:shadow-[0_0_0_1px_rgba(94,234,212,0.3),0_0_24px_rgba(94,234,212,0.08)]"
-                    />
-                    <div className="mt-4 flex items-center justify-between gap-4">
-                      <p className="text-sm text-[#8EADC0]/54">
-                        Text is the quiet fallback. Keep it spare.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={handleSend}
-                        disabled={!composerValue.trim() || generateInsight.isPending}
-                        className="inline-flex items-center gap-3 rounded-full border border-[#7DE0FF]/18 bg-[#7DE0FF]/10 px-5 py-2.5 text-[11px] uppercase tracking-[0.4em] text-[#EAF9FF] transition hover:border-[#7DE0FF]/34 hover:bg-[#7DE0FF]/14 disabled:cursor-not-allowed disabled:opacity-45"
-                      >
-                        Send
-                        <ArrowUpRight className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.main>
-        )}
-
-        {stage === "processing" && (
-          <motion.main
-            key="processing"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.45 }}
-            className="relative flex min-h-[100dvh] items-center justify-center px-6"
-          >
-            <div className="absolute left-1/2 top-1/2 h-[34rem] w-[34rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#7DE0FF]/10" />
-            <div className="absolute left-1/2 top-1/2 h-[22rem] w-[22rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#7DE0FF]/12" />
-            <div className="relative z-10 mx-auto flex max-w-3xl flex-col items-center text-center">
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 10, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
-                className="mb-8"
-              >
-                <ThirdMarkGlyph expression="gift" size={132} />
-              </motion.div>
-              <p className="text-[10px] uppercase tracking-[0.52em] text-[#8FDFFF]/56">
-                Distilling The Residue
-              </p>
-              <p
-                className="mt-6 text-4xl leading-[1.08] text-[#EAF9FF] sm:text-5xl"
-                style={{ fontFamily: '"Cormorant Garamond", serif' }}
-              >
-                The line is giving shape to what just surfaced.
-              </p>
-              <p className="mt-6 max-w-2xl text-base leading-8 text-[#A8C6D5]/66">
-                Fragments become scenes. Pressure becomes image. What mattered is
-                being pulled forward.
-              </p>
-            </div>
-          </motion.main>
-        )}
-
-        {stage === "immersive" && storyboardData && (
-          <motion.div
-            key="immersive"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="absolute inset-0 z-50 min-h-screen w-full bg-[#04040A]"
-          >
-            <ScrollyTelling
-              storyboard={storyboardData.storyboard}
-              finalCta={storyboardData.final_cta}
-              onRestart={handleRestart}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {stage === "immersive" && storyboardData && (
+        <motion.div
+          key="immersive"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="absolute inset-0 z-50 min-h-screen w-full bg-[#04040A]"
+        >
+          <ScrollyTelling
+            storyboard={storyboardData.storyboard}
+            finalCta={storyboardData.final_cta}
+            onRestart={resetExperience}
+          />
+        </motion.div>
+      )}
     </div>
   );
 }

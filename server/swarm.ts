@@ -1,4 +1,8 @@
 import type { ThirdMarkCurrentIntelligence } from "@shared/thirdMark";
+import {
+  normalizeSignalCardAgentSettings,
+  type SignalCardAgentSettings,
+} from "@shared/signalCardAgentSettings";
 import { nanoid } from "nanoid";
 import { ENV } from "./_core/env";
 import { notifyOwner } from "./_core/notification";
@@ -25,6 +29,24 @@ type SwarmCoordinationReportResponse = {
   reportId?: string;
   intelligenceId?: string;
   storedAt?: number;
+};
+
+type SwarmSignalCardAgentSettingsResponse = {
+  ok?: boolean;
+  settings?: {
+    prompt_version?: string;
+    core_identity?: string;
+    conversation_contract?: string;
+    lenox_directive?: string;
+    guest_directive?: string;
+    alfred_directive?: string;
+    operator_notes?: string;
+    lenox_aliases?: unknown;
+    alfred_aliases?: unknown;
+    trusted_vip_aliases?: unknown;
+    updated_at?: number | null;
+    updated_by?: string | null;
+  } | null;
 };
 
 export interface ThirdMarkConversationReportInput {
@@ -83,7 +105,14 @@ async function callSwarmChat(prompt: string) {
   });
 }
 
-async function callSwarmJsonEndpoint<T>(pathname: string, payload: Record<string, unknown>) {
+async function callSwarmJsonEndpoint<T>(
+  pathname: string,
+  payload: Record<string, unknown>,
+  options?: {
+    method?: "POST" | "GET";
+    headers?: Record<string, string>;
+  }
+) {
   const endpoint = getSwarmEndpoint(pathname);
   if (!endpoint) {
     return null;
@@ -93,11 +122,12 @@ async function callSwarmJsonEndpoint<T>(pathname: string, payload: Record<string
 
   try {
     const response = await fetch(endpoint, {
-      method: "POST",
+      method: options?.method ?? "POST",
       headers: {
         "content-type": "application/json",
+        ...(options?.headers ?? {}),
       },
-      body: JSON.stringify(payload),
+      body: (options?.method ?? "POST") === "GET" ? undefined : JSON.stringify(payload),
       signal: timeout.signal,
     });
 
@@ -111,6 +141,16 @@ async function callSwarmJsonEndpoint<T>(pathname: string, payload: Record<string
   } finally {
     timeout.clear();
   }
+}
+
+function getSwarmOperatorHeaders(): Record<string, string> {
+  if (!ENV.swarmOperatorApiKey) {
+    return {};
+  }
+
+  return {
+    "x-orbital-admin-key": ENV.swarmOperatorApiKey,
+  };
 }
 
 function extractJsonCandidate(value: string) {
@@ -184,6 +224,30 @@ function parseConversationReport(payload: string): ThirdMarkConversationReport |
   } catch {
     return null;
   }
+}
+
+function parseSignalCardAgentSettings(
+  payload?: SwarmSignalCardAgentSettingsResponse | null
+): SignalCardAgentSettings | null {
+  const settings = payload?.settings;
+  if (!settings) {
+    return null;
+  }
+
+  return normalizeSignalCardAgentSettings({
+    promptVersion: settings.prompt_version,
+    coreIdentity: settings.core_identity,
+    conversationContract: settings.conversation_contract,
+    lenoxDirective: settings.lenox_directive,
+    guestDirective: settings.guest_directive,
+    alfredDirective: settings.alfred_directive,
+    operatorNotes: settings.operator_notes,
+    lenoxAliases: Array.isArray(settings.lenox_aliases) ? settings.lenox_aliases.map(value => String(value)) : [],
+    alfredAliases: Array.isArray(settings.alfred_aliases) ? settings.alfred_aliases.map(value => String(value)) : [],
+    trustedVipAliases: Array.isArray(settings.trusted_vip_aliases) ? settings.trusted_vip_aliases.map(value => String(value)) : [],
+    updatedAt: typeof settings.updated_at === "number" ? settings.updated_at : null,
+    updatedBy: typeof settings.updated_by === "string" ? settings.updated_by : null,
+  });
 }
 
 function buildBriefingPrompt(visitorName?: string) {
@@ -302,6 +366,27 @@ export async function fetchSignalCardBriefing(visitorName?: string) {
     return null;
   } catch (error) {
     console.warn("[Swarm] Failed to fetch Signal Card briefing:", error);
+    return null;
+  }
+}
+
+export async function fetchSignalCardAgentSettings() {
+  if (!ENV.swarmBackendUrl || !ENV.swarmOperatorApiKey) {
+    return null;
+  }
+
+  try {
+    const response = await callSwarmJsonEndpoint<SwarmSignalCardAgentSettingsResponse>(
+      "/api/agent-settings/signal-card",
+      {},
+      {
+        method: "GET",
+        headers: getSwarmOperatorHeaders(),
+      }
+    );
+    return parseSignalCardAgentSettings(response);
+  } catch (error) {
+    console.warn("[Swarm] Failed to fetch Signal Card agent settings:", error);
     return null;
   }
 }

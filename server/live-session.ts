@@ -6,8 +6,12 @@ import {
   THIRD_MARK_WELCOME_LINE,
   buildThirdMarkSystemInstruction,
 } from "@shared/thirdMark";
+import {
+  DEFAULT_SIGNAL_CARD_AGENT_SETTINGS,
+  resolveSignalCardIdentity,
+} from "@shared/signalCardAgentSettings";
 import { ENV } from "./_core/env";
-import { fetchSignalCardBriefing } from "./swarm";
+import { fetchSignalCardAgentSettings, fetchSignalCardBriefing } from "./swarm";
 
 export interface ThirdMarkLiveSessionInput {
   name?: string;
@@ -18,6 +22,8 @@ export interface ThirdMarkLiveSessionBootstrap {
   model: string;
   welcome: string;
   revealThreshold: number;
+  identity: string;
+  settingsVersion: string;
 }
 
 function getGeminiClient() {
@@ -35,8 +41,12 @@ export async function createThirdMarkLiveSession(
   input: ThirdMarkLiveSessionInput
 ): Promise<ThirdMarkLiveSessionBootstrap> {
   const ai = getGeminiClient();
-  const briefing = await fetchSignalCardBriefing(input.name);
-  const systemInstruction = buildThirdMarkSystemInstruction(input.name, briefing);
+  const [briefing, agentSettings] = await Promise.all([
+    fetchSignalCardBriefing(input.name),
+    fetchSignalCardAgentSettings(),
+  ]);
+  const systemInstruction = buildThirdMarkSystemInstruction(input.name, briefing, agentSettings);
+  const resolvedIdentity = resolveSignalCardIdentity(input.name, agentSettings ?? DEFAULT_SIGNAL_CARD_AGENT_SETTINGS);
   const now = Date.now();
 
   const token = await ai.authTokens.create({
@@ -79,5 +89,7 @@ export async function createThirdMarkLiveSession(
     model: THIRD_MARK_LIVE_MODEL,
     welcome: THIRD_MARK_WELCOME_LINE,
     revealThreshold: THIRD_MARK_LIVE_REVEAL_THRESHOLD,
+    identity: resolvedIdentity.identity,
+    settingsVersion: agentSettings?.promptVersion ?? "signal-card-live-v1",
   };
 }

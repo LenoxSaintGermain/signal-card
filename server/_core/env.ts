@@ -11,6 +11,7 @@ export const ENV = {
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
   swarmBackendUrl: process.env.SWARM_BACKEND_URL ?? "",
+  swarmOperatorApiKey: process.env.SWARM_OPERATOR_API_KEY ?? "",
   swarmRequestTimeoutMs: Number(process.env.SWARM_REQUEST_TIMEOUT_MS ?? 8_000),
 };
 

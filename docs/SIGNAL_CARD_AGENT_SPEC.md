@@ -162,6 +162,35 @@ The agent should speak differently to:
 - collaborators,
 - people simply trying to understand Lenox.
 
+## Live Control Plane
+
+Signal Card should not be governed only by hardcoded prompt text.
+
+The live control model is:
+
+- **Swarm / Orbital** owns the editable Signal Card agent settings.
+- **Signal Card** hydrates those settings at `live.session` bootstrap time.
+- **Admin / Orbital settings surfaces** are allowed to review and update those settings.
+- **Alfred** may trigger changes or request updates, but should not bypass Orbital as the source of truth.
+
+The live settings record should include:
+
+- core identity guidance,
+- conversation contract,
+- a dedicated directive for **Lenox**,
+- a dedicated directive for **guest / invited visitor** conversations,
+- a dedicated directive for **Alfred / internal staff** conversations,
+- alias lists that let the line resolve who is actually on the other end.
+
+This means new Signal Card sessions should be able to distinguish:
+
+- **Lenox** as operator / founder,
+- **Alfred** as internal chief-of-staff coordination,
+- **guests** as high-trust external visitors.
+
+The current line should keep its existing prompt until the next session bootstrap.
+Updated settings are expected to apply to the next live line, not mutate an active conversation in place.
+
 ## IA Recommendation
 
 Signal Card should support the following information architecture.

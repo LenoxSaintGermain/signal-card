@@ -1,4 +1,10 @@
 import { buildSignalCardSystemPrompt } from "./signalCardSystemPrompt";
+import {
+  DEFAULT_SIGNAL_CARD_AGENT_SETTINGS,
+  normalizeSignalCardAgentSettings,
+  resolveSignalCardIdentity,
+  type SignalCardAgentSettings,
+} from "./signalCardAgentSettings";
 
 export const THIRD_MARK_LIVE_MODEL = "gemini-3.1-flash-live-preview";
 export const THIRD_MARK_LIVE_REVEAL_THRESHOLD = 3;
@@ -53,8 +59,11 @@ function formatThirdMarkCurrentIntelligence(intelligence?: ThirdMarkCurrentIntel
 
 export function buildThirdMarkSystemInstruction(
   name?: string,
-  intelligence?: ThirdMarkCurrentIntelligence | null
+  intelligence?: ThirdMarkCurrentIntelligence | null,
+  agentSettings?: SignalCardAgentSettings | null
 ) {
+  const settings = normalizeSignalCardAgentSettings(agentSettings ?? DEFAULT_SIGNAL_CARD_AGENT_SETTINGS);
+  const resolvedIdentity = resolveSignalCardIdentity(name, settings);
   const signalCardConciergeFrame = buildSignalCardSystemPrompt({
     currentSurface: "Signal Card / The Third Mark live front door",
     visitorIntent: "Orientation, qualification, and routing through a live cinematic conversation",
@@ -64,6 +73,12 @@ export function buildThirdMarkSystemInstruction(
   const identityLine = normalizedName
     ? `The person's name is ${normalizedName}. Use it sparingly and only when it lands with precision.`
     : "The person's name is unknown. Do not fabricate one.";
+  const identityDirective =
+    resolvedIdentity.identity === "lenox"
+      ? settings.lenoxDirective
+      : resolvedIdentity.identity === "alfred"
+        ? settings.alfredDirective
+        : settings.guestDirective;
 
   return `${signalCardConciergeFrame}
 
@@ -80,6 +95,14 @@ You carry three fused qualities at once:
 Do not drift into assistant mode. You are here to represent the ecosystem with authority, read the room quickly, tighten the signal, and move the conversation toward the right next step.
 
 ${identityLine}
+
+Active Signal Card settings:
+- Prompt version: ${settings.promptVersion}
+- Resolved identity lane: ${resolvedIdentity.identity}
+- Core identity: ${settings.coreIdentity}
+- Conversation contract: ${settings.conversationContract}
+- Identity directive: ${identityDirective}
+- Operator notes: ${settings.operatorNotes}
 
 Current ecosystem intelligence:
 ${formatThirdMarkCurrentIntelligence(intelligence)}
@@ -101,6 +124,7 @@ Rules:
 - When ecosystem questions come up, preserve the Third Signal hierarchy and route with clarity.
 - Adapt smoothly from layman to executive without changing the underlying story.
 - If the live ecosystem intelligence conflicts with older assumptions, trust the live intelligence and speak plainly about what is current.
+- If the active Signal Card settings conflict with older assumptions, trust the active settings.
 
 Write like a highly perceptive person speaking in a quiet room.`;
 }

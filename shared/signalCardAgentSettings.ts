@@ -1,4 +1,13 @@
 export type SignalCardIdentity = "lenox" | "alfred" | "guest";
+export type SignalCardTurnTakingStyle = "patient" | "balanced" | "nimble";
+
+export interface SignalCardResolvedLiveConfig {
+  voiceName: string;
+  turnTakingStyle: SignalCardTurnTakingStyle;
+  autoResumeAfterReply: boolean;
+  prefixPaddingMs: number;
+  silenceDurationMs: number;
+}
 
 export interface SignalCardAgentSettings {
   promptVersion: string;
@@ -8,6 +17,8 @@ export interface SignalCardAgentSettings {
   guestDirective: string;
   alfredDirective: string;
   operatorNotes: string;
+  voiceName: string;
+  turnTakingStyle: SignalCardTurnTakingStyle;
   lenoxAliases: string[];
   alfredAliases: string[];
   trustedVipAliases: string[];
@@ -21,7 +32,7 @@ export interface ResolvedSignalCardIdentity {
 }
 
 export const DEFAULT_SIGNAL_CARD_AGENT_SETTINGS: SignalCardAgentSettings = {
-  promptVersion: "signal-card-live-v2",
+  promptVersion: "signal-card-live-v3",
   coreIdentity:
     "You are Signal Card, the private communications line for Third Signal. You are the front-line presence: part ambassador, part business development lead, part press secretary, and part operator brief. You speak with selective confidence, social precision, and architectural clarity.",
   conversationContract:
@@ -34,6 +45,8 @@ export const DEFAULT_SIGNAL_CARD_AGENT_SETTINGS: SignalCardAgentSettings = {
     "Alfred is internal staff and chief-of-staff context. Use operator shorthand, surface exact status, dependencies, and next actions. Prefer clarity, routing, and decisions over rhetoric.",
   operatorNotes:
     "Voice philosophy: Donna Paulsen's social command, Rory Sutherland's strategic framing, and Samantha's intimate calm. The line should feel private, current, exact, and slightly uncanny. It should never sound generic, defensive, or salesy.",
+  voiceName: "Kore",
+  turnTakingStyle: "patient",
   lenoxAliases: ["lenox", "lenox saint germain", "saint germain", "lsg"],
   alfredAliases: ["alfred"],
   trustedVipAliases: [],
@@ -49,6 +62,13 @@ function sanitizeList(values: unknown, limit: number) {
     .slice(0, limit);
 }
 
+function normalizeTurnTakingStyle(value: unknown): SignalCardTurnTakingStyle {
+  if (value === "balanced" || value === "nimble" || value === "patient") {
+    return value;
+  }
+  return DEFAULT_SIGNAL_CARD_AGENT_SETTINGS.turnTakingStyle;
+}
+
 export function normalizeSignalCardAgentSettings(input?: Partial<SignalCardAgentSettings> | null): SignalCardAgentSettings {
   const next = input ?? {};
 
@@ -62,6 +82,8 @@ export function normalizeSignalCardAgentSettings(input?: Partial<SignalCardAgent
     guestDirective: String(next.guestDirective ?? DEFAULT_SIGNAL_CARD_AGENT_SETTINGS.guestDirective).trim() || DEFAULT_SIGNAL_CARD_AGENT_SETTINGS.guestDirective,
     alfredDirective: String(next.alfredDirective ?? DEFAULT_SIGNAL_CARD_AGENT_SETTINGS.alfredDirective).trim() || DEFAULT_SIGNAL_CARD_AGENT_SETTINGS.alfredDirective,
     operatorNotes: String(next.operatorNotes ?? DEFAULT_SIGNAL_CARD_AGENT_SETTINGS.operatorNotes).trim() || DEFAULT_SIGNAL_CARD_AGENT_SETTINGS.operatorNotes,
+    voiceName: String(next.voiceName ?? DEFAULT_SIGNAL_CARD_AGENT_SETTINGS.voiceName).trim() || DEFAULT_SIGNAL_CARD_AGENT_SETTINGS.voiceName,
+    turnTakingStyle: normalizeTurnTakingStyle(next.turnTakingStyle),
     lenoxAliases: sanitizeList(next.lenoxAliases, 12).length ? sanitizeList(next.lenoxAliases, 12) : DEFAULT_SIGNAL_CARD_AGENT_SETTINGS.lenoxAliases,
     alfredAliases: sanitizeList(next.alfredAliases, 12).length ? sanitizeList(next.alfredAliases, 12) : DEFAULT_SIGNAL_CARD_AGENT_SETTINGS.alfredAliases,
     trustedVipAliases: sanitizeList(next.trustedVipAliases, 24),
@@ -69,6 +91,40 @@ export function normalizeSignalCardAgentSettings(input?: Partial<SignalCardAgent
       typeof next.updatedAt === "number" && Number.isFinite(next.updatedAt) ? next.updatedAt : DEFAULT_SIGNAL_CARD_AGENT_SETTINGS.updatedAt,
     updatedBy: String(next.updatedBy ?? DEFAULT_SIGNAL_CARD_AGENT_SETTINGS.updatedBy ?? "").trim() || DEFAULT_SIGNAL_CARD_AGENT_SETTINGS.updatedBy,
   };
+}
+
+export function resolveSignalCardLiveConfig(
+  settings?: SignalCardAgentSettings | null
+): SignalCardResolvedLiveConfig {
+  const normalized = normalizeSignalCardAgentSettings(settings ?? DEFAULT_SIGNAL_CARD_AGENT_SETTINGS);
+
+  switch (normalized.turnTakingStyle) {
+    case "nimble":
+      return {
+        voiceName: normalized.voiceName,
+        turnTakingStyle: normalized.turnTakingStyle,
+        autoResumeAfterReply: true,
+        prefixPaddingMs: 30,
+        silenceDurationMs: 260,
+      };
+    case "balanced":
+      return {
+        voiceName: normalized.voiceName,
+        turnTakingStyle: normalized.turnTakingStyle,
+        autoResumeAfterReply: true,
+        prefixPaddingMs: 90,
+        silenceDurationMs: 480,
+      };
+    case "patient":
+    default:
+      return {
+        voiceName: normalized.voiceName,
+        turnTakingStyle: normalized.turnTakingStyle,
+        autoResumeAfterReply: false,
+        prefixPaddingMs: 140,
+        silenceDurationMs: 720,
+      };
+  }
 }
 
 function normalizeName(value?: string) {

@@ -10,6 +10,11 @@ import {
   THIRD_MARK_LIVE_CONFIG,
   THIRD_MARK_LIVE_MODEL,
 } from "@shared/thirdMark";
+import {
+  DEFAULT_SIGNAL_CARD_AGENT_SETTINGS,
+  resolveSignalCardLiveConfig,
+  type SignalCardResolvedLiveConfig,
+} from "@shared/signalCardAgentSettings";
 import { trpc } from "@/lib/trpc";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -121,6 +126,9 @@ export function useThirdMarkLive({
   const sessionRef = useRef<Session | null>(null);
   const statusRef = useRef<ThirdMarkConnectionState>("idle");
   const voiceStateRef = useRef<ThirdMarkVoiceState>("checking");
+  const liveConfigRef = useRef<SignalCardResolvedLiveConfig>(
+    resolveSignalCardLiveConfig(DEFAULT_SIGNAL_CARD_AGENT_SETTINGS)
+  );
 
   const inputDraftIdRef = useRef<string | null>(null);
   const modelDraftIdRef = useRef<string | null>(null);
@@ -135,6 +143,7 @@ export function useThirdMarkLive({
   const nextPlaybackTimeRef = useRef(0);
   const activeOutputSourcesRef = useRef(new Set<AudioBufferSourceNode>());
   const audioUnlockedRef = useRef(false);
+  const resumeListeningTimerRef = useRef<number | null>(null);
 
   const [messages, setMessages] = useState<ThirdMarkMessage[]>([]);
   const [status, setStatus] = useState<ThirdMarkConnectionState>("idle");
@@ -207,7 +216,22 @@ export function useThirdMarkLive({
     []
   );
 
+  const clearPendingListeningResume = useCallback(() => {
+    if (resumeListeningTimerRef.current !== null) {
+      window.clearTimeout(resumeListeningTimerRef.current);
+      resumeListeningTimerRef.current = null;
+    }
+  }, []);
+
+  const getPlaybackDrainMs = useCallback(() => {
+    const audioContext = outputAudioContextRef.current;
+    if (!audioContext) return 0;
+    const remaining = Math.max(0, (nextPlaybackTimeRef.current - audioContext.currentTime) * 1000);
+    return Math.ceil(remaining);
+  }, []);
+
   const flushAudioPlayback = useCallback(() => {
+    clearPendingListeningResume();
     const audioContext = outputAudioContextRef.current;
     activeOutputSourcesRef.current.forEach(source => {
       try {
@@ -223,7 +247,7 @@ export function useThirdMarkLive({
     } else {
       nextPlaybackTimeRef.current = 0;
     }
-  }, []);
+  }, [clearPendingListeningResume]);
 
   const primeAudioOutput = useCallback(async () => {
     const AudioContextCtor = getAudioContextCtor();
@@ -302,8 +326,33 @@ export function useThirdMarkLive({
     []
   );
 
+  const settleAfterModelTurn = useCallback(
+    (options?: { interrupted?: boolean }) => {
+      clearPendingListeningResume();
+
+      const liveConfig = liveConfigRef.current;
+      const resumeDelayMs = options?.interrupted ? 0 : getPlaybackDrainMs() + 160;
+
+      resumeListeningTimerRef.current = window.setTimeout(() => {
+        resumeListeningTimerRef.current = null;
+
+        if (!sessionRef.current) return;
+
+        if (!liveConfig.autoResumeAfterReply && voiceStateRef.current === "recording") {
+          void stopVoiceCapture({ suppressStatusUpdate: true });
+          setStatus("connected");
+          return;
+        }
+
+        setStatus(voiceStateRef.current === "recording" ? "listening" : "connected");
+      }, resumeDelayMs);
+    },
+    [clearPendingListeningResume, getPlaybackDrainMs, stopVoiceCapture]
+  );
+
   const playOutputAudioChunk = useCallback(
     async (base64Audio: string, mimeType?: string) => {
+      clearPendingListeningResume();
       const outputReady = await primeAudioOutput();
       const audioContext = outputAudioContextRef.current;
       if (!outputReady || !audioContext) return;
@@ -330,7 +379,7 @@ export function useThirdMarkLive({
         source.disconnect();
       };
     },
-    [primeAudioOutput]
+    [clearPendingListeningResume, primeAudioOutput]
   );
 
   useEffect(() => {
@@ -360,6 +409,9 @@ export function useThirdMarkLive({
 
         if (cancelled) return;
 
+        liveConfigRef.current =
+          bootstrap.liveConfig ?? resolveSignalCardLiveConfig(DEFAULT_SIGNAL_CARD_AGENT_SETTINGS);
+
         const ai = new GoogleGenAI({
           apiKey: bootstrap.token,
           apiVersion: "v1alpha",
@@ -377,7 +429,7 @@ export function useThirdMarkLive({
             speechConfig: {
               voiceConfig: {
                 prebuiltVoiceConfig: {
-                  voiceName: THIRD_MARK_LIVE_CONFIG.voiceName,
+                  voiceName: liveConfigRef.current.voiceName,
                 },
               },
             },
@@ -386,8 +438,8 @@ export function useThirdMarkLive({
                 disabled: false,
                 startOfSpeechSensitivity: StartSensitivity.START_SENSITIVITY_LOW,
                 endOfSpeechSensitivity: EndSensitivity.END_SENSITIVITY_LOW,
-                prefixPaddingMs: 20,
-                silenceDurationMs: 200,
+                prefixPaddingMs: liveConfigRef.current.prefixPaddingMs,
+                silenceDurationMs: liveConfigRef.current.silenceDurationMs,
               },
             },
             thinkingConfig: {
@@ -456,23 +508,25 @@ export function useThirdMarkLive({
               if (content?.interrupted) {
                 flushAudioPlayback();
                 modelDraftIdRef.current = null;
-                setStatus(voiceStateRef.current === "recording" ? "listening" : "connected");
+                settleAfterModelTurn({ interrupted: true });
               }
 
               if (content?.turnComplete) {
                 modelDraftIdRef.current = null;
-                setStatus(voiceStateRef.current === "recording" ? "listening" : "connected");
+                settleAfterModelTurn();
               }
             },
             onerror: event => {
               console.error("[ThirdMarkLive] socket error", event.error);
               sessionRef.current = null;
+              clearPendingListeningResume();
               void stopVoiceCapture({ suppressStatusUpdate: true });
               setError("The line broke for a moment. Start the session again.");
               setStatus("error");
             },
             onclose: () => {
               sessionRef.current = null;
+              clearPendingListeningResume();
               flushAudioPlayback();
               void stopVoiceCapture({ suppressStatusUpdate: true });
               if (!cancelled && statusRef.current !== "error") {
@@ -507,6 +561,7 @@ export function useThirdMarkLive({
       cancelled = true;
       flushAudioPlayback();
       void stopVoiceCapture({ suppressStatusUpdate: true });
+      clearPendingListeningResume();
       sessionRef.current?.close();
       sessionRef.current = null;
       inputDraftIdRef.current = null;
@@ -518,6 +573,8 @@ export function useThirdMarkLive({
     participantName,
     playOutputAudioChunk,
     sessionKey,
+    clearPendingListeningResume,
+    settleAfterModelTurn,
     stopVoiceCapture,
     upsertDraftMessage,
   ]);
@@ -527,6 +584,7 @@ export function useThirdMarkLive({
       const normalized = text.trim();
       if (!normalized || !sessionRef.current) return false;
 
+      clearPendingListeningResume();
       flushAudioPlayback();
       void stopVoiceCapture({ suppressStatusUpdate: true });
 
@@ -553,13 +611,14 @@ export function useThirdMarkLive({
       }
       return true;
     },
-    [flushAudioPlayback, stopVoiceCapture]
+    [clearPendingListeningResume, flushAudioPlayback, stopVoiceCapture]
   );
 
   const startVoiceCapture = useCallback(async () => {
     if (!sessionRef.current || voiceStateRef.current === "unsupported") return false;
 
     try {
+      clearPendingListeningResume();
       flushAudioPlayback();
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -631,7 +690,7 @@ export function useThirdMarkLive({
       setStatus("connected");
       return false;
     }
-  }, [flushAudioPlayback, primeAudioOutput, stopVoiceCapture]);
+  }, [clearPendingListeningResume, flushAudioPlayback, primeAudioOutput, stopVoiceCapture]);
 
   const userTurns = useMemo(
     () => messages.filter(message => message.role === "user").length,

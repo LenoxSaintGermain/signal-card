@@ -41,6 +41,8 @@ type SwarmSignalCardAgentSettingsResponse = {
     guest_directive?: string;
     alfred_directive?: string;
     operator_notes?: string;
+    voice_name?: string;
+    turn_taking_style?: string;
     lenox_aliases?: unknown;
     alfred_aliases?: unknown;
     trusted_vip_aliases?: unknown;
@@ -242,6 +244,8 @@ function parseSignalCardAgentSettings(
     guestDirective: settings.guest_directive,
     alfredDirective: settings.alfred_directive,
     operatorNotes: settings.operator_notes,
+    voiceName: settings.voice_name,
+    turnTakingStyle: settings.turn_taking_style as SignalCardAgentSettings["turnTakingStyle"],
     lenoxAliases: Array.isArray(settings.lenox_aliases) ? settings.lenox_aliases.map(value => String(value)) : [],
     alfredAliases: Array.isArray(settings.alfred_aliases) ? settings.alfred_aliases.map(value => String(value)) : [],
     trustedVipAliases: Array.isArray(settings.trusted_vip_aliases) ? settings.trusted_vip_aliases.map(value => String(value)) : [],

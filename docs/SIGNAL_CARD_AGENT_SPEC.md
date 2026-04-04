@@ -182,6 +182,9 @@ The live settings record should include:
 - a dedicated directive for **Alfred / internal staff** conversations,
 - alias lists that let the line resolve who is actually on the other end.
 
+Operator surfaces may also request an **AI-assisted draft** of the Signal Card settings before saving.
+That draft is advisory only: the operator still reviews it, edits it if needed, and then saves the resulting record into Swarm / Orbital.
+
 This means new Signal Card sessions should be able to distinguish:
 
 - **Lenox** as operator / founder,

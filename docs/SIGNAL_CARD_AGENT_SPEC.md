@@ -187,8 +187,9 @@ Operator surfaces may also request an **AI-assisted draft** of the Signal Card s
 The shared settings record now also carries the live voice layer for new sessions:
 - `voice_name` selects the Gemini prebuilt voice used by the line
 - `turn_taking_style` controls how quickly the line hands turns back and forth
-- recommended baseline: `voice_name=Kore`, `turn_taking_style=patient`
-- `patient` mode is intentionally half-duplex: the caller taps to speak, Signal Card answers, and the line rests instead of immediately re-opening the mic
+- recommended UAT baseline: `voice_name=Kore`, `turn_taking_style=balanced`
+- `balanced` mode keeps the line conversational while giving reply audio more room to land cleanly
+- `patient` mode is still available when the experience should feel more ceremonial and half-duplex
 That draft is advisory only: the operator still reviews it, edits it if needed, and then saves the resulting record into Swarm / Orbital.
 
 This means new Signal Card sessions should be able to distinguish:

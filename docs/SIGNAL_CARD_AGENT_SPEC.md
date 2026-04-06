@@ -220,6 +220,8 @@ Operational rule:
 
 - live speech and shared prompt hydration must both be verified after any Cloud Run env or secret change,
 - a successful web deploy is not enough if those two runtime dependencies are absent.
+- voice selection, turn-taking, and prompt version should be treated as shared settings, not one-off literals in a single shell.
+- Signal Card must not promise that Alfred or the team will follow up unless a real operator brief and any required contact capture have both happened.
 
 ## IA Recommendation
 

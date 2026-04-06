@@ -17,6 +17,7 @@ import {
   type SignalCardResolvedLiveConfig,
 } from "@shared/signalCardAgentSettings";
 import {
+  SIGNAL_CARD_CONTACT_CAPTURE_TOOL,
   SIGNAL_CARD_LIVE_TOOL_DECLARATIONS,
   SIGNAL_CARD_OPERATOR_BRIEF_TOOL,
   SIGNAL_CARD_REFRESH_BRIEFING_TOOL,
@@ -113,9 +114,32 @@ function getSampleRateFromMimeType(mimeType?: string) {
   return Number.isFinite(parsed) ? parsed : 24_000;
 }
 
+function truncate(value: string, maxLength: number) {
+  if (value.length <= maxLength) return value;
+  return `${value.slice(0, maxLength - 1).trimEnd()}…`;
+}
+
 type DraftRef = {
   current: string | null;
 };
+
+export interface ThirdMarkPendingContactCapture {
+  title: string;
+  summary: string;
+  audience: string;
+  opportunity: string;
+  nextStep: string;
+  urgency: "low" | "normal" | "high";
+  requestedFor: "operator" | "alfred";
+  reason: string;
+  proofToShow: string[];
+}
+
+export interface ThirdMarkContactCaptureInput {
+  email: string;
+  company?: string;
+  notes?: string;
+}
 
 export function useThirdMarkLive({
   enabled,
@@ -132,11 +156,13 @@ export function useThirdMarkLive({
   const operatorActionRef = useRef(operatorActionMutation.mutateAsync);
   const briefingMutation = trpc.live.briefing.useMutation();
   const briefingRef = useRef(briefingMutation.mutateAsync);
+  const emailCaptureMutation = trpc.emailCaptures.save.useMutation();
 
   const sessionRef = useRef<Session | null>(null);
   const statusRef = useRef<ThirdMarkConnectionState>("idle");
   const voiceStateRef = useRef<ThirdMarkVoiceState>("checking");
   const messagesRef = useRef<ThirdMarkMessage[]>([]);
+  const participantNameRef = useRef(participantName);
   const liveConfigRef = useRef<SignalCardResolvedLiveConfig>(
     resolveSignalCardLiveConfig(DEFAULT_SIGNAL_CARD_AGENT_SETTINGS)
   );
@@ -160,6 +186,8 @@ export function useThirdMarkLive({
   const [status, setStatus] = useState<ThirdMarkConnectionState>("idle");
   const [error, setError] = useState<string | null>(null);
   const [voiceState, setVoiceState] = useState<ThirdMarkVoiceState>("checking");
+  const [pendingContactCapture, setPendingContactCapture] =
+    useState<ThirdMarkPendingContactCapture | null>(null);
 
   useEffect(() => {
     statusRef.current = status;
@@ -172,6 +200,10 @@ export function useThirdMarkLive({
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
+
+  useEffect(() => {
+    participantNameRef.current = participantName;
+  }, [participantName]);
 
   useEffect(() => {
     bootstrapSessionRef.current = bootstrapSessionMutation.mutateAsync;
@@ -423,6 +455,31 @@ export function useThirdMarkLive({
     };
   }, []);
 
+  const sendHiddenContext = useCallback(
+    (text: string) => {
+      const normalized = text.trim();
+      if (!normalized || !sessionRef.current) return false;
+
+      clearPendingListeningResume();
+      flushAudioPlayback();
+      void stopVoiceCapture({ suppressStatusUpdate: true });
+
+      setStatus("replying");
+      try {
+        sessionRef.current.sendRealtimeInput({
+          text: normalized,
+        });
+      } catch {
+        sessionRef.current = null;
+        setError("The line closed before the follow-up could land. Start it once more.");
+        setStatus("error");
+        return false;
+      }
+      return true;
+    },
+    [clearPendingListeningResume, flushAudioPlayback, stopVoiceCapture]
+  );
+
   const handleToolCall = useCallback(
     async (session: Session, functionCall: { id?: string; name?: string; args?: Record<string, unknown> }) => {
       const callId = functionCall.id;
@@ -438,7 +495,7 @@ export function useThirdMarkLive({
       try {
         if (callName === SIGNAL_CARD_OPERATOR_BRIEF_TOOL) {
           const result = await operatorActionRef.current({
-            visitorName: participantName?.trim() || undefined,
+            visitorName: participantNameRef.current?.trim() || undefined,
             transcript: conversation.transcript || "Signal Card captured an operator-facing moment.",
             messageCount: conversation.messageCount,
             userTurns: conversation.userTurns,
@@ -482,7 +539,7 @@ export function useThirdMarkLive({
 
         if (callName === SIGNAL_CARD_REFRESH_BRIEFING_TOOL) {
           const briefing = await briefingRef.current({
-            visitorName: participantName?.trim() || undefined,
+            visitorName: participantNameRef.current?.trim() || undefined,
           });
 
           session.sendToolResponse({
@@ -499,6 +556,50 @@ export function useThirdMarkLive({
                   orbitalCapabilities: briefing?.orbitalCapabilities ?? [],
                   routingNotes: briefing?.routingNotes ?? [],
                   freshness: briefing?.freshness ?? null,
+                },
+              },
+            ],
+          });
+          return;
+        }
+
+        if (callName === SIGNAL_CARD_CONTACT_CAPTURE_TOOL) {
+          const contactCapture: ThirdMarkPendingContactCapture = {
+            title: String(args.title ?? "Signal Card follow-up").trim() || "Signal Card follow-up",
+            summary:
+              String(args.summary ?? "").trim() ||
+              "Signal Card captured a follow-up opportunity that needs real contact details.",
+            audience: String(args.audience ?? "guest").trim() || "guest",
+            opportunity:
+              String(args.opportunity ?? "").trim() ||
+              "A concrete opportunity surfaced on the line.",
+            nextStep:
+              String(args.nextStep ?? "").trim() ||
+              "Collect contact details and route the brief.",
+            urgency:
+              args.urgency === "high" || args.urgency === "low" || args.urgency === "normal"
+                ? args.urgency
+                : "normal",
+            requestedFor: args.requestedFor === "alfred" ? "alfred" : "operator",
+            reason:
+              String(args.reason ?? "").trim() ||
+              "I need a real way to route this back to the team.",
+            proofToShow: Array.isArray(args.proofToShow)
+              ? args.proofToShow.map(value => String(value ?? "").trim()).filter(Boolean).slice(0, 8)
+              : [],
+          };
+
+          setPendingContactCapture(contactCapture);
+          session.sendToolResponse({
+            functionResponses: [
+              {
+                id: callId,
+                name: callName,
+                response: {
+                  ok: true,
+                  status: "awaiting_contact_capture",
+                  reason: contactCapture.reason,
+                  fields: ["email", "company", "notes"],
                 },
               },
             ],
@@ -534,7 +635,7 @@ export function useThirdMarkLive({
         });
       }
     },
-    [getConversationSnapshot, participantName]
+    [getConversationSnapshot]
   );
 
   useEffect(() => {
@@ -542,6 +643,7 @@ export function useThirdMarkLive({
       void stopVoiceCapture({ suppressStatusUpdate: true });
       flushAudioPlayback();
       setStatus("idle");
+      setPendingContactCapture(null);
       sessionRef.current?.close();
       sessionRef.current = null;
       inputDraftIdRef.current = null;
@@ -559,7 +661,7 @@ export function useThirdMarkLive({
     const connect = async () => {
       try {
         const bootstrap = await bootstrapSessionRef.current({
-          name: participantName?.trim() || undefined,
+          name: participantNameRef.current?.trim() || undefined,
         });
 
         if (cancelled) return;
@@ -729,12 +831,12 @@ export function useThirdMarkLive({
       sessionRef.current = null;
       inputDraftIdRef.current = null;
       modelDraftIdRef.current = null;
+      setPendingContactCapture(null);
     };
   }, [
     enabled,
     flushAudioPlayback,
     handleToolCall,
-    participantName,
     playOutputAudioChunk,
     sessionKey,
     clearPendingListeningResume,
@@ -856,6 +958,85 @@ export function useThirdMarkLive({
     }
   }, [clearPendingListeningResume, flushAudioPlayback, primeAudioOutput, stopVoiceCapture]);
 
+  const submitContactCapture = useCallback(
+    async (input: ThirdMarkContactCaptureInput) => {
+      const pending = pendingContactCapture;
+      if (!pending) {
+        return { ok: false as const, reportId: null };
+      }
+
+      const normalizedEmail = input.email.trim();
+      const normalizedCompany = input.company?.trim() || "";
+      const normalizedNotes = input.notes?.trim() || "";
+
+      await emailCaptureMutation.mutateAsync({
+        email: normalizedEmail,
+        role: pending.audience,
+        industry: normalizedCompany || undefined,
+        signal: truncate(
+          [pending.requestedFor, pending.opportunity, normalizedNotes].filter(Boolean).join(" | "),
+          100
+        ),
+      });
+
+      const conversation = getConversationSnapshot();
+      const contactNoteLines = [
+        "Captured follow-up details:",
+        `Name: ${participantNameRef.current?.trim() || "unknown"}`,
+        `Email: ${normalizedEmail}`,
+        normalizedCompany ? `Company: ${normalizedCompany}` : null,
+        normalizedNotes ? `Notes: ${normalizedNotes}` : null,
+      ].filter(Boolean);
+
+      const result = await operatorActionRef.current({
+        visitorName: participantNameRef.current?.trim() || undefined,
+        transcript: [conversation.transcript, contactNoteLines.join("\n")].filter(Boolean).join("\n\n"),
+        messageCount: conversation.messageCount,
+        userTurns: conversation.userTurns,
+        messages: conversation.messages,
+        title: pending.title,
+        summary: [pending.summary, `Contact captured: ${normalizedEmail}${normalizedCompany ? ` (${normalizedCompany})` : ""}.`]
+          .filter(Boolean)
+          .join(" "),
+        audience: pending.audience,
+        opportunity: pending.opportunity,
+        nextStep: pending.nextStep,
+        urgency: pending.urgency,
+        requestedFor: pending.requestedFor,
+        proofToShow: pending.proofToShow,
+      });
+
+      setPendingContactCapture(null);
+
+      sendHiddenContext(
+        [
+          "Operator note:",
+          `Verified follow-up contact captured for ${participantNameRef.current?.trim() || "the visitor"}.`,
+          `Email: ${normalizedEmail}.`,
+          normalizedCompany ? `Company: ${normalizedCompany}.` : null,
+          normalizedNotes ? `Notes: ${normalizedNotes}.` : null,
+          `The ${pending.requestedFor === "alfred" ? "Alfred" : "operator"} brief is filed as ${result.reportId ?? "pending"}.`,
+          "Acknowledge briefly and continue.",
+        ]
+          .filter(Boolean)
+          .join(" ")
+      );
+
+      return { ok: true as const, reportId: result.reportId };
+    },
+    [
+      emailCaptureMutation,
+      getConversationSnapshot,
+      operatorActionRef,
+      pendingContactCapture,
+      sendHiddenContext,
+    ]
+  );
+
+  const dismissContactCapture = useCallback(() => {
+    setPendingContactCapture(null);
+  }, []);
+
   const userTurns = useMemo(
     () => messages.filter(message => message.role === "user").length,
     [messages]
@@ -871,5 +1052,10 @@ export function useThirdMarkLive({
     stopVoiceCapture,
     voiceState,
     userTurns,
+    pendingContactCapture,
+    submitContactCapture,
+    dismissContactCapture,
+    contactCaptureBusy:
+      emailCaptureMutation.isPending || operatorActionMutation.isPending,
   };
 }

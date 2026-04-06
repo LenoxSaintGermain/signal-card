@@ -35,6 +35,20 @@ export type SignalTerminalPrompt =
       onChange: (value: string) => void;
       onSubmit: () => void;
       submitDisabled?: boolean;
+    }
+  | {
+      type: "contact";
+      reason: string;
+      email: string;
+      company: string;
+      notes: string;
+      submitLabel: string;
+      onEmailChange: (value: string) => void;
+      onCompanyChange: (value: string) => void;
+      onNotesChange: (value: string) => void;
+      onSubmit: () => void;
+      onDismiss?: () => void;
+      submitDisabled?: boolean;
     };
 
 const GOLD = "#C4A265";
@@ -550,6 +564,105 @@ function TextPrompt({
   );
 }
 
+function ContactPrompt({
+  reason,
+  email,
+  company,
+  notes,
+  submitLabel,
+  submitDisabled,
+  onEmailChange,
+  onCompanyChange,
+  onNotesChange,
+  onSubmit,
+  onDismiss,
+  onVoice,
+  voiceActive,
+  voiceDisabled,
+}: {
+  reason: string;
+  email: string;
+  company: string;
+  notes: string;
+  submitLabel: string;
+  submitDisabled?: boolean;
+  onEmailChange: (value: string) => void;
+  onCompanyChange: (value: string) => void;
+  onNotesChange: (value: string) => void;
+  onSubmit: () => void;
+  onDismiss?: () => void;
+  onVoice: () => void;
+  voiceActive: boolean;
+  voiceDisabled?: boolean;
+}) {
+  return (
+    <PromptShell>
+      <div className="space-y-4">
+        <p className="max-w-[92%] font-mono text-[11px] leading-[1.7] tracking-[0.03em] text-white/38">
+          {reason}
+        </p>
+        <input
+          value={email}
+          onChange={event => onEmailChange(event.target.value)}
+          onKeyDown={event => {
+            if (event.key === "Enter" && !event.shiftKey) {
+              event.preventDefault();
+              onSubmit();
+            }
+          }}
+          type="email"
+          placeholder="Email"
+          className="h-12 w-full border-b border-white/10 bg-transparent px-0 text-[0.98rem] text-[rgba(245,240,232,0.9)] outline-none transition placeholder:text-white/14 focus:border-[rgba(196,162,101,0.42)]"
+          style={{ fontFamily: '"Cormorant Garamond", serif', fontStyle: "italic" }}
+        />
+        <input
+          value={company}
+          onChange={event => onCompanyChange(event.target.value)}
+          placeholder="Company (optional)"
+          className="h-12 w-full border-b border-white/10 bg-transparent px-0 text-[0.98rem] text-[rgba(245,240,232,0.74)] outline-none transition placeholder:text-white/12 focus:border-[rgba(196,162,101,0.34)]"
+          style={{ fontFamily: '"Cormorant Garamond", serif', fontStyle: "italic" }}
+        />
+        <textarea
+          value={notes}
+          onChange={event => onNotesChange(event.target.value)}
+          rows={3}
+          placeholder="Anything the team should know? (optional)"
+          className="min-h-[6rem] w-full resize-none border-b border-white/10 bg-transparent px-0 py-2 text-[0.98rem] leading-7 text-[rgba(245,240,232,0.74)] outline-none transition placeholder:text-white/12 focus:border-[rgba(196,162,101,0.34)]"
+          style={{ fontFamily: '"Cormorant Garamond", serif', fontStyle: "italic" }}
+        />
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={onSubmit}
+              disabled={submitDisabled}
+              className="text-[10px] uppercase tracking-[0.34em] transition hover:text-[#f4dfbc] disabled:cursor-not-allowed disabled:opacity-40"
+              style={{ color: `${GOLD}D0` }}
+            >
+              {submitLabel}
+            </button>
+            {onDismiss ? (
+              <button
+                type="button"
+                onClick={onDismiss}
+                className="text-[10px] uppercase tracking-[0.28em] text-white/24 transition hover:text-white/46"
+              >
+                Not now
+              </button>
+            ) : null}
+          </div>
+          <VoiceOption
+            active={voiceActive}
+            disabled={voiceDisabled}
+            onClick={onVoice}
+            label={voiceActive ? "Stop listening" : "Speak instead"}
+          />
+        </div>
+      </div>
+    </PromptShell>
+  );
+}
+
 export function SignalCardTerminal({
   stage,
   orbState,
@@ -775,6 +888,24 @@ export function SignalCardTerminal({
                   submitDisabled={activePrompt.submitDisabled}
                   onChange={activePrompt.onChange}
                   onSubmit={activePrompt.onSubmit}
+                  onVoice={onVoiceToggle}
+                  voiceActive={voiceActive}
+                  voiceDisabled={voiceDisabled}
+                />
+              ) : activePrompt?.type === "contact" ? (
+                <ContactPrompt
+                  key="prompt-contact"
+                  reason={activePrompt.reason}
+                  email={activePrompt.email}
+                  company={activePrompt.company}
+                  notes={activePrompt.notes}
+                  submitLabel={activePrompt.submitLabel}
+                  submitDisabled={activePrompt.submitDisabled}
+                  onEmailChange={activePrompt.onEmailChange}
+                  onCompanyChange={activePrompt.onCompanyChange}
+                  onNotesChange={activePrompt.onNotesChange}
+                  onSubmit={activePrompt.onSubmit}
+                  onDismiss={activePrompt.onDismiss}
                   onVoice={onVoiceToggle}
                   voiceActive={voiceActive}
                   voiceDisabled={voiceDisabled}

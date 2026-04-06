@@ -89,6 +89,9 @@ export default function ThirdMarkHome() {
   const [visitorName, setVisitorName] = useState<string | undefined>();
   const [nameDraft, setNameDraft] = useState("");
   const [composerValue, setComposerValue] = useState("");
+  const [contactEmailDraft, setContactEmailDraft] = useState("");
+  const [contactCompanyDraft, setContactCompanyDraft] = useState("");
+  const [contactNotesDraft, setContactNotesDraft] = useState("");
   const [showTextFallback, setShowTextFallback] = useState(false);
   const [storyboardData, setStoryboardData] = useState<any>(null);
   const [movieSlug, setMovieSlug] = useState<string | null>(null);
@@ -111,9 +114,13 @@ export default function ThirdMarkHome() {
     stopVoiceCapture,
     voiceState,
     userTurns,
+    pendingContactCapture,
+    submitContactCapture,
+    dismissContactCapture,
+    contactCaptureBusy,
   } = useThirdMarkLive({
     enabled: stage === "live",
-    participantName: undefined,
+    participantName: visitorName,
     sessionKey,
   });
 
@@ -234,6 +241,9 @@ export default function ThirdMarkHome() {
     setVisitorName(undefined);
     setNameDraft("");
     setComposerValue("");
+    setContactEmailDraft("");
+    setContactCompanyDraft("");
+    setContactNotesDraft("");
     setShowTextFallback(false);
     setPromptState(null);
     setLocalLines([]);
@@ -254,6 +264,9 @@ export default function ThirdMarkHome() {
     setVisitorName(undefined);
     setNameDraft("");
     setComposerValue("");
+    setContactEmailDraft("");
+    setContactCompanyDraft("");
+    setContactNotesDraft("");
     setStage("live");
 
     window.setTimeout(() => {
@@ -334,6 +347,44 @@ export default function ThirdMarkHome() {
       placeholder: "Type into the dark.",
     });
   }, [composerValue, primeAudioOutput, sendMessage]);
+
+  const handleContactSubmit = useCallback(async () => {
+    const normalizedEmail = contactEmailDraft.trim();
+    if (!normalizedEmail || !pendingContactCapture) return;
+
+    try {
+      await submitContactCapture({
+        email: normalizedEmail,
+        company: contactCompanyDraft.trim() || undefined,
+        notes: contactNotesDraft.trim() || undefined,
+      });
+
+      pushVisitorLine(
+        contactCompanyDraft.trim()
+          ? `Email shared for follow-up. ${contactCompanyDraft.trim()}.`
+          : "Email shared for follow-up."
+      );
+      setContactEmailDraft("");
+      setContactCompanyDraft("");
+      setContactNotesDraft("");
+    } catch (cause) {
+      console.warn("[ThirdMarkHome] failed to capture follow-up contact", cause);
+    }
+  }, [
+    contactCompanyDraft,
+    contactEmailDraft,
+    contactNotesDraft,
+    pendingContactCapture,
+    pushVisitorLine,
+    submitContactCapture,
+  ]);
+
+  const handleContactDismiss = useCallback(() => {
+    dismissContactCapture();
+    setContactEmailDraft("");
+    setContactCompanyDraft("");
+    setContactNotesDraft("");
+  }, [dismissContactCapture]);
 
   const handleOpenTextFallback = useCallback(() => {
     setFlowState("active");
@@ -420,6 +471,23 @@ export default function ThirdMarkHome() {
   };
 
   const activePrompt = useMemo<SignalTerminalPrompt | null>(() => {
+    if (pendingContactCapture) {
+      return {
+        type: "contact",
+        reason: pendingContactCapture.reason,
+        email: contactEmailDraft,
+        company: contactCompanyDraft,
+        notes: contactNotesDraft,
+        submitLabel: "Share line",
+        onEmailChange: setContactEmailDraft,
+        onCompanyChange: setContactCompanyDraft,
+        onNotesChange: setContactNotesDraft,
+        onSubmit: handleContactSubmit,
+        onDismiss: handleContactDismiss,
+        submitDisabled: !contactEmailDraft.trim() || contactCaptureBusy,
+      };
+    }
+
     if (promptState?.type === "name") {
       return {
         type: "name",
@@ -452,7 +520,22 @@ export default function ThirdMarkHome() {
     }
 
     return null;
-  }, [composerValue, generateInsight.isPending, handleChooseRoute, handleNameSubmit, handleTextSubmit, nameDraft, promptState]);
+  }, [
+    composerValue,
+    contactCaptureBusy,
+    contactCompanyDraft,
+    contactEmailDraft,
+    contactNotesDraft,
+    generateInsight.isPending,
+    handleChooseRoute,
+    handleContactDismiss,
+    handleContactSubmit,
+    handleNameSubmit,
+    handleTextSubmit,
+    nameDraft,
+    pendingContactCapture,
+    promptState,
+  ]);
 
   const orbState = getOrbState(status, voiceState, Boolean(typingGhost));
 

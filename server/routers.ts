@@ -6,7 +6,11 @@ import { adminProcedure, publicProcedure, rateLimitedPublicProcedure, router } f
 import { saveEmailCapture } from "./emailCaptures";
 import { generateInsight } from "./insight-generator";
 import { createThirdMarkLiveSession } from "./live-session";
-import { reportThirdMarkConversationToAlfred } from "./swarm";
+import {
+  fetchSignalCardBriefing,
+  fileSignalCardOperatorAction,
+  reportThirdMarkConversationToAlfred,
+} from "./swarm";
 import { generateAndPersistStoryboardVideos } from "./video-generator";
 import { movies, signalCardConversations } from "../drizzle/schema";
 import { getDb } from "./db";
@@ -139,6 +143,44 @@ export const appRouter = router({
       )
       .mutation(async ({ input }) => {
         return await reportThirdMarkConversationToAlfred(input);
+      }),
+    briefing: rateLimitedPublicProcedure({ windowMs: 10 * 60 * 1000, max: 30, keyPrefix: "live-briefing" })
+      .input(
+        z.object({
+          visitorName: z.string().trim().max(80).optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        return await fetchSignalCardBriefing(input.visitorName);
+      }),
+    operatorAction: rateLimitedPublicProcedure({ windowMs: 10 * 60 * 1000, max: 30, keyPrefix: "live-operator-action" })
+      .input(
+        z.object({
+          visitorName: z.string().trim().max(80).optional(),
+          transcript: z.string().trim().min(1).max(20_000),
+          messageCount: z.number().int().min(0).max(200).optional(),
+          userTurns: z.number().int().min(0).max(100).optional(),
+          messages: z
+            .array(
+              z.object({
+                role: z.enum(["guide", "user", "model"]),
+                text: z.string().trim().min(1).max(4_000),
+              })
+            )
+            .max(80)
+            .optional(),
+          title: z.string().trim().min(1).max(140),
+          summary: z.string().trim().min(1).max(4_000),
+          audience: z.string().trim().min(1).max(64),
+          opportunity: z.string().trim().min(1).max(300),
+          nextStep: z.string().trim().min(1).max(300),
+          urgency: z.enum(["low", "normal", "high"]).default("normal"),
+          requestedFor: z.enum(["operator", "alfred"]).default("operator"),
+          proofToShow: z.array(z.string().trim().min(1).max(240)).max(8).optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        return await fileSignalCardOperatorAction(input);
       }),
     reports: router({
       list: adminProcedure

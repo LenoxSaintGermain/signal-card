@@ -1,4 +1,5 @@
 import {
+  ActivityHandling,
   EndSensitivity,
   GoogleGenAI,
   Modality,
@@ -15,6 +16,11 @@ import {
   resolveSignalCardLiveConfig,
   type SignalCardResolvedLiveConfig,
 } from "@shared/signalCardAgentSettings";
+import {
+  SIGNAL_CARD_LIVE_TOOL_DECLARATIONS,
+  SIGNAL_CARD_OPERATOR_BRIEF_TOOL,
+  SIGNAL_CARD_REFRESH_BRIEFING_TOOL,
+} from "@shared/signalCardLiveTools";
 import { trpc } from "@/lib/trpc";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -122,10 +128,15 @@ export function useThirdMarkLive({
 }) {
   const bootstrapSessionMutation = trpc.live.session.useMutation();
   const bootstrapSessionRef = useRef(bootstrapSessionMutation.mutateAsync);
+  const operatorActionMutation = trpc.live.operatorAction.useMutation();
+  const operatorActionRef = useRef(operatorActionMutation.mutateAsync);
+  const briefingMutation = trpc.live.briefing.useMutation();
+  const briefingRef = useRef(briefingMutation.mutateAsync);
 
   const sessionRef = useRef<Session | null>(null);
   const statusRef = useRef<ThirdMarkConnectionState>("idle");
   const voiceStateRef = useRef<ThirdMarkVoiceState>("checking");
+  const messagesRef = useRef<ThirdMarkMessage[]>([]);
   const liveConfigRef = useRef<SignalCardResolvedLiveConfig>(
     resolveSignalCardLiveConfig(DEFAULT_SIGNAL_CARD_AGENT_SETTINGS)
   );
@@ -159,8 +170,20 @@ export function useThirdMarkLive({
   }, [voiceState]);
 
   useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  useEffect(() => {
     bootstrapSessionRef.current = bootstrapSessionMutation.mutateAsync;
   }, [bootstrapSessionMutation.mutateAsync]);
+
+  useEffect(() => {
+    operatorActionRef.current = operatorActionMutation.mutateAsync;
+  }, [operatorActionMutation.mutateAsync]);
+
+  useEffect(() => {
+    briefingRef.current = briefingMutation.mutateAsync;
+  }, [briefingMutation.mutateAsync]);
 
   useEffect(() => {
     const supported =
@@ -382,6 +405,138 @@ export function useThirdMarkLive({
     [clearPendingListeningResume, primeAudioOutput]
   );
 
+  const getConversationSnapshot = useCallback(() => {
+    const conversationMessages = messagesRef.current
+      .filter(message => message.role !== "guide")
+      .map(message => ({
+        role: message.role,
+        text: message.text,
+      }));
+
+    return {
+      transcript: conversationMessages
+        .map(message => `${message.role === "user" ? "User" : "Signal Card"}: ${message.text}`)
+        .join("\n"),
+      messages: conversationMessages,
+      messageCount: conversationMessages.length,
+      userTurns: conversationMessages.filter(message => message.role === "user").length,
+    };
+  }, []);
+
+  const handleToolCall = useCallback(
+    async (session: Session, functionCall: { id?: string; name?: string; args?: Record<string, unknown> }) => {
+      const callId = functionCall.id;
+      const callName = functionCall.name;
+      const args = functionCall.args ?? {};
+
+      if (!callId || !callName) {
+        return;
+      }
+
+      const conversation = getConversationSnapshot();
+
+      try {
+        if (callName === SIGNAL_CARD_OPERATOR_BRIEF_TOOL) {
+          const result = await operatorActionRef.current({
+            visitorName: participantName?.trim() || undefined,
+            transcript: conversation.transcript || "Signal Card captured an operator-facing moment.",
+            messageCount: conversation.messageCount,
+            userTurns: conversation.userTurns,
+            messages: conversation.messages,
+            title: String(args.title ?? "Signal Card operator brief").trim(),
+            summary: String(args.summary ?? "").trim() || "Signal Card captured a new opportunity for the team.",
+            audience: String(args.audience ?? "operator").trim() || "operator",
+            opportunity:
+              String(args.opportunity ?? "").trim() ||
+              "A potentially valuable operating or business-development signal surfaced on the line.",
+            nextStep:
+              String(args.nextStep ?? "").trim() ||
+              "Review the signal and decide the next move.",
+            urgency:
+              args.urgency === "high" || args.urgency === "low" || args.urgency === "normal"
+                ? args.urgency
+                : "normal",
+            requestedFor: args.requestedFor === "alfred" ? "alfred" : "operator",
+            proofToShow: Array.isArray(args.proofToShow)
+              ? args.proofToShow.map(value => String(value ?? "").trim()).filter(Boolean).slice(0, 8)
+              : undefined,
+          });
+
+          session.sendToolResponse({
+            functionResponses: [
+              {
+                id: callId,
+                name: callName,
+                response: {
+                  ok: result.persisted,
+                  reportId: result.reportId,
+                  title: result.title,
+                  summary: result.summary,
+                  nextStep: result.nextStep,
+                },
+              },
+            ],
+          });
+          return;
+        }
+
+        if (callName === SIGNAL_CARD_REFRESH_BRIEFING_TOOL) {
+          const briefing = await briefingRef.current({
+            visitorName: participantName?.trim() || undefined,
+          });
+
+          session.sendToolResponse({
+            functionResponses: [
+              {
+                id: callId,
+                name: callName,
+                response: {
+                  ok: Boolean(briefing),
+                  focus: String(args.focus ?? "").trim(),
+                  summary: briefing?.summary ?? null,
+                  proofSurfaces: briefing?.proofSurfaces ?? [],
+                  latestResearch: briefing?.latestResearch ?? [],
+                  orbitalCapabilities: briefing?.orbitalCapabilities ?? [],
+                  routingNotes: briefing?.routingNotes ?? [],
+                  freshness: briefing?.freshness ?? null,
+                },
+              },
+            ],
+          });
+          return;
+        }
+
+        session.sendToolResponse({
+          functionResponses: [
+            {
+              id: callId,
+              name: callName,
+              response: {
+                ok: false,
+                error: `Unknown tool: ${callName}`,
+              },
+            },
+          ],
+        });
+      } catch (error) {
+        console.error("[ThirdMarkLive] tool call failed", error);
+        session.sendToolResponse({
+          functionResponses: [
+            {
+              id: callId,
+              name: callName,
+              response: {
+                ok: false,
+                error: error instanceof Error ? error.message : "Tool execution failed.",
+              },
+            },
+          ],
+        });
+      }
+    },
+    [getConversationSnapshot, participantName]
+  );
+
   useEffect(() => {
     if (!enabled) {
       void stopVoiceCapture({ suppressStatusUpdate: true });
@@ -426,6 +581,7 @@ export function useThirdMarkLive({
             maxOutputTokens: THIRD_MARK_LIVE_CONFIG.maxOutputTokens,
             inputAudioTranscription: {},
             outputAudioTranscription: {},
+            tools: [{ functionDeclarations: SIGNAL_CARD_LIVE_TOOL_DECLARATIONS as any }],
             speechConfig: {
               voiceConfig: {
                 prebuiltVoiceConfig: {
@@ -441,6 +597,7 @@ export function useThirdMarkLive({
                 prefixPaddingMs: liveConfigRef.current.prefixPaddingMs,
                 silenceDurationMs: liveConfigRef.current.silenceDurationMs,
               },
+              activityHandling: ActivityHandling.NO_INTERRUPTION,
             },
             thinkingConfig: {
               thinkingLevel: ThinkingLevel.MINIMAL,
@@ -459,6 +616,12 @@ export function useThirdMarkLive({
               ]);
             },
             onmessage: event => {
+              if (event.toolCall?.functionCalls?.length) {
+                for (const functionCall of event.toolCall.functionCalls) {
+                  void handleToolCall(nextSession, functionCall);
+                }
+              }
+
               const content = event.serverContent;
               const parts = (content?.modelTurn?.parts ?? []) as Array<{
                 text?: string;
@@ -570,6 +733,7 @@ export function useThirdMarkLive({
   }, [
     enabled,
     flushAudioPlayback,
+    handleToolCall,
     participantName,
     playOutputAudioChunk,
     sessionKey,
@@ -633,7 +797,7 @@ export function useThirdMarkLive({
       await inputContext.resume();
 
       const source = inputContext.createMediaStreamSource(stream);
-      const processor = inputContext.createScriptProcessor(2048, 1, 1);
+      const processor = inputContext.createScriptProcessor(512, 1, 1);
       const gain = inputContext.createGain();
       gain.gain.value = 0;
 

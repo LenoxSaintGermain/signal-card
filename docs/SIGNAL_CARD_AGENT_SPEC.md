@@ -190,6 +190,14 @@ The shared settings record now also carries the live voice layer for new session
 - recommended UAT baseline: `voice_name=Kore`, `turn_taking_style=balanced`
 - `balanced` mode keeps the line conversational while giving reply audio more room to land cleanly
 - `patient` mode is still available when the experience should feel more ceremonial and half-duplex
+- the live audio shell now uses `NO_INTERRUPTION` activity handling so incidental room noise or keyboard taps do not clip her reply mid-turn
+- the mic stream now sends smaller realtime chunks so turn detection is less laggy on mobile
+
+The live line now has two Swarm-backed action tools available during conversation:
+- `file_operator_brief`: captures an actionable opportunity or explicit Alfred/team handoff into the shared coordination lane
+- `pull_current_briefing`: refreshes current proof surfaces and ecosystem context mid-conversation when the visitor asks what is current
+
+Signal Card should use those tools proactively when a meaningful opportunity surfaces, and explicitly before claiming that something has been routed to Alfred or the operator lane.
 That draft is advisory only: the operator still reviews it, edits it if needed, and then saves the resulting record into Swarm / Orbital.
 
 This means new Signal Card sessions should be able to distinguish:

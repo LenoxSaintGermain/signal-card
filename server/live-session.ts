@@ -6,6 +6,7 @@ import {
   THIRD_MARK_WELCOME_LINE,
   buildThirdMarkSystemInstruction,
 } from "@shared/thirdMark";
+import { SIGNAL_CARD_LIVE_TOOL_DECLARATIONS } from "@shared/signalCardLiveTools";
 import {
   DEFAULT_SIGNAL_CARD_AGENT_SETTINGS,
   resolveSignalCardLiveConfig,
@@ -74,6 +75,7 @@ export async function createThirdMarkLiveSession(
               },
             },
           },
+          tools: [{ functionDeclarations: SIGNAL_CARD_LIVE_TOOL_DECLARATIONS as any }],
           thinkingConfig: {
             thinkingLevel: ThinkingLevel.MINIMAL,
           },
@@ -94,7 +96,7 @@ export async function createThirdMarkLiveSession(
     welcome: THIRD_MARK_WELCOME_LINE,
     revealThreshold: THIRD_MARK_LIVE_REVEAL_THRESHOLD,
     identity: resolvedIdentity.identity,
-    settingsVersion: agentSettings?.promptVersion ?? "signal-card-live-v1",
+    settingsVersion: agentSettings?.promptVersion ?? DEFAULT_SIGNAL_CARD_AGENT_SETTINGS.promptVersion,
     liveConfig,
   };
 }

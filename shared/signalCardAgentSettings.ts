@@ -112,8 +112,8 @@ export function resolveSignalCardLiveConfig(
         voiceName: normalized.voiceName,
         turnTakingStyle: normalized.turnTakingStyle,
         autoResumeAfterReply: true,
-        prefixPaddingMs: 90,
-        silenceDurationMs: 480,
+        prefixPaddingMs: 120,
+        silenceDurationMs: 650,
       };
     case "patient":
     default:

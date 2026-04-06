@@ -79,6 +79,33 @@ export interface ThirdMarkConversationReportResult {
   report: ThirdMarkConversationReport;
 }
 
+export interface SignalCardOperatorActionInput {
+  visitorName?: string;
+  transcript: string;
+  messageCount?: number;
+  userTurns?: number;
+  messages?: Array<{
+    role: "guide" | "user" | "model";
+    text: string;
+  }>;
+  title: string;
+  summary: string;
+  audience: string;
+  opportunity: string;
+  nextStep: string;
+  urgency: "low" | "normal" | "high";
+  requestedFor: "operator" | "alfred";
+  proofToShow?: string[];
+}
+
+export interface SignalCardOperatorActionResult {
+  persisted: boolean;
+  reportId: string | null;
+  title: string;
+  summary: string;
+  nextStep: string;
+}
+
 function getSwarmEndpoint(pathname: string) {
   if (!ENV.swarmBackendUrl) {
     return null;
@@ -514,5 +541,101 @@ export async function reportThirdMarkConversationToAlfred(input: ThirdMarkConver
     persisted,
     reportId,
     report,
+  };
+}
+
+export async function fileSignalCardOperatorAction(
+  input: SignalCardOperatorActionInput
+): Promise<SignalCardOperatorActionResult> {
+  const sanitizedTitle =
+    truncate(input.title.trim() || "Signal Card operator brief", 140);
+  const sanitizedSummary =
+    truncate(input.summary.trim() || "Signal Card captured an operator-facing signal.", 4_000);
+  const sanitizedAudience = truncate(input.audience.trim() || "operator", 64);
+  const sanitizedOpportunity =
+    truncate(input.opportunity.trim() || "Operator follow-up requested from the line.", 300);
+  const sanitizedNextStep =
+    truncate(input.nextStep.trim() || "Review the captured signal and choose the next move.", 300);
+  const proofToShow = normalizeStringArray(input.proofToShow, 8);
+  const targetTag = input.requestedFor === "alfred" ? "alfred-request" : "operator-brief";
+
+  let persisted = false;
+  let reportId: string | null = null;
+
+  if (ENV.swarmBackendUrl) {
+    try {
+      reportId = `sig-${nanoid(10)}`;
+      const coordination = await callSwarmJsonEndpoint<SwarmCoordinationReportResponse>(
+        "/api/coordination/report",
+        {
+          source: "signal-card",
+          surface: "Signal Card",
+          report_id: reportId,
+          title: sanitizedTitle,
+          visitor_name: input.visitorName?.trim() || null,
+          audience: sanitizedAudience,
+          opportunity: sanitizedOpportunity,
+          next_step: sanitizedNextStep,
+          urgency: input.urgency,
+          summary: sanitizedSummary,
+          transcript: truncate(input.transcript, 12_000),
+          reveal_slug: null,
+          proof_to_show: proofToShow,
+          message_count: input.messageCount ?? null,
+          user_turns: input.userTurns ?? null,
+          messages: input.messages ?? [],
+          tags: [
+            "signal-card",
+            "conversation",
+            targetTag,
+            sanitizedAudience,
+          ].filter(Boolean),
+        }
+      );
+
+      if (coordination?.ok) {
+        persisted = true;
+        reportId = coordination.reportId ?? reportId;
+      }
+    } catch (error) {
+      console.warn("[Signal Card] Failed to persist operator action via Swarm:", error);
+    }
+  }
+
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Signal Card] Database unavailable; skipping local operator action persistence.");
+  } else {
+    try {
+      const localReportId = reportId ?? `sig-${nanoid(10)}`;
+      await db.insert(signalCardConversations).values({
+        reportId: localReportId,
+        visitorName: input.visitorName?.trim() || null,
+        transcript: truncate(input.transcript, 20_000),
+        summary: sanitizedSummary,
+        audience: sanitizedAudience,
+        opportunity: sanitizedOpportunity,
+        nextStep: sanitizedNextStep,
+        urgency: input.urgency,
+        proofToShow,
+        revealSlug: null,
+        messageCount: input.messageCount ?? null,
+        userTurns: input.userTurns ?? null,
+        messages: input.messages ?? [],
+        notifiedOwner: 0,
+      });
+      persisted = true;
+      reportId = localReportId;
+    } catch (error) {
+      console.warn("[Signal Card] Failed to persist operator action locally:", error);
+    }
+  }
+
+  return {
+    persisted,
+    reportId,
+    title: sanitizedTitle,
+    summary: sanitizedSummary,
+    nextStep: sanitizedNextStep,
   };
 }

@@ -252,10 +252,10 @@ function VoiceOption({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.34em] text-[#7de0ff]/76 transition hover:text-[#dff7ff] disabled:cursor-not-allowed disabled:opacity-40"
+      className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.34em] text-[#7de0ff]/90 transition hover:text-[#dff7ff] disabled:cursor-not-allowed disabled:opacity-40"
     >
       <motion.span
-        className="inline-block h-2 w-2 rounded-full bg-[#7de0ff]"
+        className="inline-block h-2.5 w-2.5 rounded-full bg-[#7de0ff]"
         animate={
           active
             ? {
@@ -268,17 +268,17 @@ function VoiceOption({
                 ],
               }
             : {
-                scale: [1, 1.12, 1],
-                opacity: [0.45, 0.88, 0.45],
+                scale: [1, 1.18, 1],
+                opacity: [0.6, 1, 0.6],
                 boxShadow: [
                   "0 0 0 rgba(125,224,255,0)",
-                  "0 0 5px rgba(125,224,255,0.2)",
+                  "0 0 8px rgba(125,224,255,0.32)",
                   "0 0 0 rgba(125,224,255,0)",
                 ],
               }
         }
         transition={{
-          duration: active ? 1.1 : 2.2,
+          duration: active ? 1.1 : 1.8,
           repeat: Number.POSITIVE_INFINITY,
           ease: "easeInOut",
         }}
@@ -452,7 +452,7 @@ function NamePrompt({
             active={voiceActive}
             disabled={voiceDisabled}
             onClick={onVoice}
-            label={voiceActive ? "Stop listening" : "Speak instead"}
+            label={voiceActive ? "Stop listening" : "Voice · speak now"}
           />
         </div>
       </div>
@@ -496,7 +496,7 @@ function ChoicePrompt({
             active={voiceActive}
             disabled={voiceDisabled}
             onClick={onVoice}
-            label={voiceActive ? "Stop listening" : "Speak instead"}
+            label={voiceActive ? "Stop listening" : "Voice · speak now"}
           />
         </div>
       </div>
@@ -556,7 +556,7 @@ function TextPrompt({
             active={voiceActive}
             disabled={voiceDisabled}
             onClick={onVoice}
-            label={voiceActive ? "Stop listening" : "Speak instead"}
+            label={voiceActive ? "Stop listening" : "Voice · speak now"}
           />
         </div>
       </div>
@@ -655,7 +655,7 @@ function ContactPrompt({
             active={voiceActive}
             disabled={voiceDisabled}
             onClick={onVoice}
-            label={voiceActive ? "Stop listening" : "Speak instead"}
+            label={voiceActive ? "Stop listening" : "Voice · speak now"}
           />
         </div>
       </div>
@@ -771,6 +771,9 @@ export function SignalCardTerminal({
             />
             Open the line
           </button>
+          <p className="mt-4 text-[9px] uppercase tracking-[0.3em] text-white/22">
+            Voice or text — your call
+          </p>
         </div>
       </main>
     );
@@ -821,7 +824,7 @@ export function SignalCardTerminal({
         >
           <div className="space-y-5 pb-14 pt-2">
             {!visibleEntries.length && !typingGhost && statusLine ? (
-              <p className="max-w-[72%] font-mono text-[11px] leading-[1.72] tracking-[0.03em] text-white/24">
+              <p className="max-w-[72%] font-mono text-[11px] leading-[1.72] tracking-[0.03em] text-white/44">
                 {statusLine}
               </p>
             ) : null}
@@ -932,7 +935,7 @@ export function SignalCardTerminal({
                   active={voiceActive}
                   disabled={voiceDisabled}
                   onClick={onVoiceToggle}
-                  label={voiceActive ? "Stop listening" : "Speak instead"}
+                  label={voiceActive ? "Stop listening" : "Voice · speak now"}
                 />
                 <button
                   type="button"

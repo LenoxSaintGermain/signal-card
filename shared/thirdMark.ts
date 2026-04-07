@@ -20,7 +20,6 @@ export const THIRD_MARK_STARTER_PROMPTS = [
 export const THIRD_MARK_LIVE_CONFIG = {
   temperature: 0.78,
   topP: 0.9,
-  maxOutputTokens: 170,
   thinkingLevel: "MINIMAL" as const,
   responseModalities: ["AUDIO"] as const,
   voiceName: "Kore",

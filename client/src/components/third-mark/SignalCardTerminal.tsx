@@ -296,7 +296,7 @@ function GhostLine({
   onDone?: (id: string) => void;
 }) {
   const isStreaming = entry.status === "streaming";
-  const { displayed, complete } = useTypewriterText(entry.id, entry.text, 26, true);
+  const { displayed, complete } = useTypewriterText(entry.id, entry.text, 8, true);
   const doneForIdRef = useRef<string | null>(null);
 
   useEffect(() => {

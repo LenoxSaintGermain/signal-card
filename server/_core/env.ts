@@ -4,7 +4,8 @@ export const ENV = {
   databaseUrl: process.env.DATABASE_URL ?? "",
   geminiApiKey: process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY ?? "",
   oAuthServerUrl: process.env.OAUTH_SERVER_URL ?? "",
-  oAuthPortalUrl: process.env.OAUTH_PORTAL_URL ?? process.env.VITE_OAUTH_PORTAL_URL ?? "",
+  oAuthPortalUrl:
+    process.env.OAUTH_PORTAL_URL ?? process.env.VITE_OAUTH_PORTAL_URL ?? "",
   appOrigin: process.env.APP_ORIGIN ?? process.env.VITE_APP_ORIGIN ?? "",
   ownerOpenId: process.env.OWNER_OPEN_ID ?? "",
   isProduction: process.env.NODE_ENV === "production",
@@ -14,6 +15,12 @@ export const ENV = {
   swarmOperatorApiKey: process.env.SWARM_OPERATOR_API_KEY ?? "",
   swarmRequestTimeoutMs: Number(process.env.SWARM_REQUEST_TIMEOUT_MS ?? 8_000),
 };
+
+export function isOAuthConfigured() {
+  return Boolean(
+    ENV.appId && ENV.oAuthServerUrl && ENV.oAuthPortalUrl && ENV.appOrigin
+  );
+}
 
 function assertUrl(value: string, label: string) {
   try {
@@ -27,18 +34,35 @@ export function validateEnv() {
   const missing: string[] = [];
 
   if (!ENV.cookieSecret) missing.push("JWT_SECRET");
-  if (!ENV.appId) missing.push("VITE_APP_ID");
-  if (!ENV.oAuthServerUrl) missing.push("OAUTH_SERVER_URL");
-  if (!ENV.oAuthPortalUrl) missing.push("OAUTH_PORTAL_URL (or VITE_OAUTH_PORTAL_URL)");
-  if (!ENV.appOrigin) missing.push("APP_ORIGIN (or VITE_APP_ORIGIN)");
 
-  if (missing.length > 0) {
-    throw new Error(`Missing required environment variables: ${missing.join(", ")}`);
+  const oauthValues = [
+    ENV.appId,
+    ENV.oAuthServerUrl,
+    ENV.oAuthPortalUrl,
+    ENV.appOrigin,
+  ].filter(Boolean);
+
+  if (oauthValues.length > 0 && !isOAuthConfigured()) {
+    missing.push(
+      "complete OAuth configuration: VITE_APP_ID, OAUTH_SERVER_URL, OAUTH_PORTAL_URL (or VITE_OAUTH_PORTAL_URL), APP_ORIGIN (or VITE_APP_ORIGIN)"
+    );
   }
 
-  assertUrl(ENV.oAuthServerUrl, "OAUTH_SERVER_URL");
-  assertUrl(ENV.oAuthPortalUrl, "OAUTH_PORTAL_URL");
-  assertUrl(ENV.appOrigin, "APP_ORIGIN");
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing required environment variables: ${missing.join(", ")}`
+    );
+  }
+
+  if (ENV.oAuthServerUrl) {
+    assertUrl(ENV.oAuthServerUrl, "OAUTH_SERVER_URL");
+  }
+  if (ENV.oAuthPortalUrl) {
+    assertUrl(ENV.oAuthPortalUrl, "OAUTH_PORTAL_URL");
+  }
+  if (ENV.appOrigin) {
+    assertUrl(ENV.appOrigin, "APP_ORIGIN");
+  }
 
   if (ENV.swarmBackendUrl) {
     assertUrl(ENV.swarmBackendUrl, "SWARM_BACKEND_URL");

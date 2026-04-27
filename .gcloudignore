@@ -1,6 +1,6 @@
 .git
 .gitignore
-.gcloudignore
+.dockerignore
 .env
 .env.*
 !.env.example

@@ -3,7 +3,7 @@ import { randomBytes } from "crypto";
 import { parse as parseCookieHeader } from "cookie";
 import type { Express, Request, Response } from "express";
 import * as db from "../db";
-import { ENV } from "./env";
+import { ENV, isOAuthConfigured } from "./env";
 import { getOAuthStateCookieOptions, getSessionCookieOptions } from "./cookies";
 import { sdk } from "./sdk";
 
@@ -57,6 +57,13 @@ function buildPortalLoginUrl(redirectUri: string, state: string): string {
 export function registerOAuthRoutes(app: Express) {
   app.get("/api/oauth/start", (req: Request, res: Response) => {
     try {
+      if (!isOAuthConfigured()) {
+        res
+          .status(503)
+          .json({ error: "OAuth is not configured for this deployment" });
+        return;
+      }
+
       const redirectUri = buildRedirectUri();
       const state = randomBytes(32).toString("base64url");
       const cookieOptions = getOAuthStateCookieOptions(req);
@@ -75,6 +82,13 @@ export function registerOAuthRoutes(app: Express) {
   });
 
   app.get("/api/oauth/callback", async (req: Request, res: Response) => {
+    if (!isOAuthConfigured()) {
+      res
+        .status(503)
+        .json({ error: "OAuth is not configured for this deployment" });
+      return;
+    }
+
     const code = getQueryParam(req, "code");
     const state = getQueryParam(req, "state");
 
@@ -119,7 +133,10 @@ export function registerOAuthRoutes(app: Express) {
       });
 
       const cookieOptions = getSessionCookieOptions(req);
-      res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+      res.cookie(COOKIE_NAME, sessionToken, {
+        ...cookieOptions,
+        maxAge: ONE_YEAR_MS,
+      });
 
       res.redirect(302, "/");
     } catch (error) {

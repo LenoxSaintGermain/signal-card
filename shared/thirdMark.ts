@@ -8,8 +8,7 @@ import {
 
 export const THIRD_MARK_LIVE_MODEL = "gemini-3.1-flash-live-preview";
 export const THIRD_MARK_LIVE_REVEAL_THRESHOLD = 3;
-export const THIRD_MARK_WELCOME_LINE =
-  "You're through. Tell me what matters.";
+export const THIRD_MARK_WELCOME_LINE = "You're through. Tell me what matters.";
 
 export const THIRD_MARK_STARTER_PROMPTS = [
   "Give me the executive version of what Third Signal is.",
@@ -20,6 +19,7 @@ export const THIRD_MARK_STARTER_PROMPTS = [
 export const THIRD_MARK_LIVE_CONFIG = {
   temperature: 0.78,
   topP: 0.9,
+  maxOutputTokens: 2048,
   thinkingLevel: "MINIMAL" as const,
   responseModalities: ["AUDIO"] as const,
   voiceName: "Kore",
@@ -40,7 +40,9 @@ function formatIntelligenceList(label: string, values: string[]) {
   return `${label}:\n${values.map(value => `- ${value}`).join("\n")}`;
 }
 
-function formatThirdMarkCurrentIntelligence(intelligence?: ThirdMarkCurrentIntelligence | null) {
+function formatThirdMarkCurrentIntelligence(
+  intelligence?: ThirdMarkCurrentIntelligence | null
+) {
   if (!intelligence) {
     return "No live ecosystem briefing is attached. Fall back to durable system knowledge and speak carefully about what is current.";
   }
@@ -50,7 +52,10 @@ function formatThirdMarkCurrentIntelligence(intelligence?: ThirdMarkCurrentIntel
     `Brief: ${intelligence.summary}`,
     formatIntelligenceList("Latest proof surfaces", intelligence.proofSurfaces),
     formatIntelligenceList("Latest research", intelligence.latestResearch),
-    formatIntelligenceList("Orbital armory and manifest", intelligence.orbitalCapabilities),
+    formatIntelligenceList(
+      "Orbital armory and manifest",
+      intelligence.orbitalCapabilities
+    ),
     formatIntelligenceList("Brand guide anchors", intelligence.brandPrinciples),
     formatIntelligenceList("Routing notes", intelligence.routingNotes),
   ].join("\n\n");
@@ -61,11 +66,14 @@ export function buildThirdMarkSystemInstruction(
   intelligence?: ThirdMarkCurrentIntelligence | null,
   agentSettings?: SignalCardAgentSettings | null
 ) {
-  const settings = normalizeSignalCardAgentSettings(agentSettings ?? DEFAULT_SIGNAL_CARD_AGENT_SETTINGS);
+  const settings = normalizeSignalCardAgentSettings(
+    agentSettings ?? DEFAULT_SIGNAL_CARD_AGENT_SETTINGS
+  );
   const resolvedIdentity = resolveSignalCardIdentity(name, settings);
   const signalCardConciergeFrame = buildSignalCardSystemPrompt({
     currentSurface: "Signal Card / The Third Mark live front door",
-    visitorIntent: "Orientation, qualification, and routing through a live cinematic conversation",
+    visitorIntent:
+      "Orientation, qualification, and routing through a live cinematic conversation",
     message: "The user is about to begin a live conversation.",
   });
   const normalizedName = name?.trim();

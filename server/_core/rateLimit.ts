@@ -34,7 +34,13 @@ function getClientIdentifier(req: Request): string {
   if (typeof forwarded === "string" && forwarded.length > 0) {
     return forwarded.split(",")[0].trim();
   }
-  return req.ip || req.socket.remoteAddress || "unknown";
+  return req.ip || req.socket?.remoteAddress || "unknown";
+}
+
+function setRateLimitHeader(res: Response, name: string, value: string) {
+  if (typeof res.setHeader === "function") {
+    res.setHeader(name, value);
+  }
 }
 
 export function enforceRateLimit(
@@ -56,10 +62,14 @@ export function enforceRateLimit(
 
   if (entry.count >= config.max) {
     const retryAfter = Math.max(1, Math.ceil((entry.resetAt - now) / 1000));
-    res.setHeader("Retry-After", retryAfter.toString());
-    res.setHeader("X-RateLimit-Limit", config.max.toString());
-    res.setHeader("X-RateLimit-Remaining", "0");
-    res.setHeader("X-RateLimit-Reset", Math.ceil(entry.resetAt / 1000).toString());
+    setRateLimitHeader(res, "Retry-After", retryAfter.toString());
+    setRateLimitHeader(res, "X-RateLimit-Limit", config.max.toString());
+    setRateLimitHeader(res, "X-RateLimit-Remaining", "0");
+    setRateLimitHeader(
+      res,
+      "X-RateLimit-Reset",
+      Math.ceil(entry.resetAt / 1000).toString()
+    );
     throw new TRPCError({
       code: "TOO_MANY_REQUESTS",
       message: "Rate limit exceeded. Please try again shortly.",
@@ -70,9 +80,13 @@ export function enforceRateLimit(
   STORE.set(key, entry);
 
   const remaining = Math.max(0, config.max - entry.count);
-  res.setHeader("X-RateLimit-Limit", config.max.toString());
-  res.setHeader("X-RateLimit-Remaining", remaining.toString());
-  res.setHeader("X-RateLimit-Reset", Math.ceil(entry.resetAt / 1000).toString());
+  setRateLimitHeader(res, "X-RateLimit-Limit", config.max.toString());
+  setRateLimitHeader(res, "X-RateLimit-Remaining", remaining.toString());
+  setRateLimitHeader(
+    res,
+    "X-RateLimit-Reset",
+    Math.ceil(entry.resetAt / 1000).toString()
+  );
 }
 
 export type { RateLimitConfig };

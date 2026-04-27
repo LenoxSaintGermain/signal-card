@@ -154,6 +154,7 @@ async function callSwarmJsonEndpoint<T>(
       method: options?.method ?? "POST",
       headers: {
         "content-type": "application/json",
+        ...getSwarmOperatorHeaders(),
         ...(options?.headers ?? {}),
       },
       body: (options?.method ?? "POST") === "GET" ? undefined : JSON.stringify(payload),
@@ -178,6 +179,7 @@ function getSwarmOperatorHeaders(): Record<string, string> {
   }
 
   return {
+    "x-swarm-operator-key": ENV.swarmOperatorApiKey,
     "x-orbital-admin-key": ENV.swarmOperatorApiKey,
   };
 }

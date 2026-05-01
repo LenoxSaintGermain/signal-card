@@ -154,6 +154,8 @@ export function useThirdMarkLive({
   const bootstrapSessionRef = useRef(bootstrapSessionMutation.mutateAsync);
   const operatorActionMutation = trpc.live.operatorAction.useMutation();
   const operatorActionRef = useRef(operatorActionMutation.mutateAsync);
+  const reportConversationMutation = trpc.live.report.useMutation();
+  const reportConversationRef = useRef(reportConversationMutation.mutateAsync);
   const briefingMutation = trpc.live.briefing.useMutation();
   const briefingRef = useRef(briefingMutation.mutateAsync);
   const emailCaptureMutation = trpc.emailCaptures.save.useMutation();
@@ -163,6 +165,8 @@ export function useThirdMarkLive({
   const voiceStateRef = useRef<ThirdMarkVoiceState>("checking");
   const messagesRef = useRef<ThirdMarkMessage[]>([]);
   const participantNameRef = useRef(participantName);
+  const autoReportedSessionKeyRef = useRef<number | null>(null);
+  const operatorReportFiledSessionKeyRef = useRef<number | null>(null);
   const liveConfigRef = useRef<SignalCardResolvedLiveConfig>(
     resolveSignalCardLiveConfig(DEFAULT_SIGNAL_CARD_AGENT_SETTINGS)
   );
@@ -212,6 +216,10 @@ export function useThirdMarkLive({
   useEffect(() => {
     operatorActionRef.current = operatorActionMutation.mutateAsync;
   }, [operatorActionMutation.mutateAsync]);
+
+  useEffect(() => {
+    reportConversationRef.current = reportConversationMutation.mutateAsync;
+  }, [reportConversationMutation.mutateAsync]);
 
   useEffect(() => {
     briefingRef.current = briefingMutation.mutateAsync;
@@ -480,6 +488,36 @@ export function useThirdMarkLive({
     [clearPendingListeningResume, flushAudioPlayback, stopVoiceCapture]
   );
 
+  const archiveConversationIfNeeded = useCallback(
+    (reason: "session_closed" | "session_stopped" | "component_unmounted") => {
+      const conversation = getConversationSnapshot();
+      const transcript = conversation.transcript.trim();
+
+      if (!transcript || conversation.userTurns < 1) return;
+      if (autoReportedSessionKeyRef.current === sessionKey) return;
+      if (operatorReportFiledSessionKeyRef.current === sessionKey) return;
+
+      autoReportedSessionKeyRef.current = sessionKey;
+
+      void reportConversationRef
+        .current({
+          visitorName: participantNameRef.current?.trim() || undefined,
+          transcript: [
+            transcript,
+            "",
+            `Archive reason: ${reason}.`,
+          ].join("\n"),
+          messageCount: conversation.messageCount,
+          userTurns: conversation.userTurns,
+          messages: conversation.messages,
+        })
+        .catch(cause => {
+          console.warn("[ThirdMarkLive] failed to auto-archive conversation", cause);
+        });
+    },
+    [getConversationSnapshot, sessionKey]
+  );
+
   const handleToolCall = useCallback(
     async (session: Session, functionCall: { id?: string; name?: string; args?: Record<string, unknown> }) => {
       const callId = functionCall.id;
@@ -534,6 +572,10 @@ export function useThirdMarkLive({
               },
             ],
           });
+
+          if (result.reportId) {
+            operatorReportFiledSessionKeyRef.current = sessionKey;
+          }
           return;
         }
 
@@ -635,11 +677,12 @@ export function useThirdMarkLive({
         });
       }
     },
-    [getConversationSnapshot]
+    [getConversationSnapshot, sessionKey]
   );
 
   useEffect(() => {
     if (!enabled) {
+      archiveConversationIfNeeded("session_stopped");
       void stopVoiceCapture({ suppressStatusUpdate: true });
       flushAudioPlayback();
       setStatus("idle");
@@ -790,6 +833,7 @@ export function useThirdMarkLive({
               setStatus("error");
             },
             onclose: () => {
+              archiveConversationIfNeeded("session_closed");
               sessionRef.current = null;
               clearPendingListeningResume();
               flushAudioPlayback();
@@ -824,6 +868,7 @@ export function useThirdMarkLive({
 
     return () => {
       cancelled = true;
+      archiveConversationIfNeeded("component_unmounted");
       flushAudioPlayback();
       void stopVoiceCapture({ suppressStatusUpdate: true });
       clearPendingListeningResume();
@@ -835,6 +880,7 @@ export function useThirdMarkLive({
     };
   }, [
     enabled,
+    archiveConversationIfNeeded,
     flushAudioPlayback,
     handleToolCall,
     playOutputAudioChunk,
@@ -1006,6 +1052,10 @@ export function useThirdMarkLive({
         proofToShow: pending.proofToShow,
       });
 
+      if (result.reportId) {
+        operatorReportFiledSessionKeyRef.current = sessionKey;
+      }
+
       setPendingContactCapture(null);
 
       sendHiddenContext(
@@ -1030,6 +1080,7 @@ export function useThirdMarkLive({
       operatorActionRef,
       pendingContactCapture,
       sendHiddenContext,
+      sessionKey,
     ]
   );
 
@@ -1056,6 +1107,8 @@ export function useThirdMarkLive({
     submitContactCapture,
     dismissContactCapture,
     contactCaptureBusy:
-      emailCaptureMutation.isPending || operatorActionMutation.isPending,
+      emailCaptureMutation.isPending ||
+      operatorActionMutation.isPending ||
+      reportConversationMutation.isPending,
   };
 }
